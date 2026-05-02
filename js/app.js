@@ -11,7 +11,7 @@ const HISTORY_MAX = 25;
  * Google Apps Script — Web App (URL termina em /exec).
  * Onde colar: substitua a string abaixo pela URL copiada em "Gerenciar implantações".
  */
-const URL_API = '';
+const URL_API = 'https://script.google.com/macros/s/AKfycbxXI4Q-Q13y8j6tCsD1MtHlf1Ve0QUokrGn-Z8v-GXuSMSImveBsjyqmf4GDglcIWlW/exec';
 
 /** Colunas esperadas na planilha (ordem do backend) — usado para render da tabela local */
 const COLS_PLANILHA = [
