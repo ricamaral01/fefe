@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1F242C" />
+  <meta name="description" content="Relatório de controle de slump — laboratório de concreto (PWA offline)" />
+  <title>Slump Lab — Controle de ensaio</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="app-header__top">
+      <div>
+        <h1>Slump Lab</h1>
+        <p class="subtitle">Controle de slump · laboratório / campo · PWA</p>
+      </div>
+      <div class="header-actions">
+        <span id="app-status-pill" class="pill pill--ok" title="Estado do app">
+          <span class="pill__dot" aria-hidden="true"></span>
+          <span id="app-status-text">Pronto</span>
+        </span>
+        <button type="button" id="btn-install" class="btn btn--secondary hidden" aria-label="Instalar app">Instalar</button>
+        <button type="button" id="btn-pdf" class="btn btn--primary" aria-label="Gerar PDF">PDF</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="segmented container" role="tablist" aria-label="Seções do aplicativo">
+    <button type="button" class="segmented__btn is-active" data-tab="dados" role="tab" aria-selected="true" id="tab-dados">
+      <span class="segmented__icon" aria-hidden="true">▣</span>
+      <span>Dados</span>
+    </button>
+    <button type="button" class="segmented__btn" data-tab="graficos" role="tab" aria-selected="false" id="tab-graficos">
+      <span class="segmented__icon" aria-hidden="true">▤</span>
+      <span>Gráficos</span>
+    </button>
+    <button type="button" class="segmented__btn" data-tab="nuvem" role="tab" aria-selected="false" id="tab-nuvem">
+      <span class="segmented__icon" aria-hidden="true">☁</span>
+      <span>Nuvem</span>
+    </button>
+  </nav>
+
+  <main class="container">
+    <div id="view-dados" class="view-panel is-visible" role="tabpanel" aria-labelledby="tab-dados">
+      <section class="card" aria-labelledby="sec-geral">
+        <h2 id="sec-geral">Dados do ensaio</h2>
+        <div class="grid-2">
+          <label class="field">
+            <span>Objetivo</span>
+            <input type="text" id="objetivo" class="input-lg" placeholder="Ex.: Desenvolvimento" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>Projeto / linha</span>
+            <input type="text" id="projeto" class="input-lg" placeholder="Ex.: Aditivo para LINHA" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span>Fck (MPa)</span>
+            <input type="text" id="fck" class="input-lg" inputmode="decimal" placeholder="30" />
+          </label>
+          <label class="field">
+            <span>Slump / Flow alvo (mm)</span>
+            <input type="text" id="slumpMeta" class="input-lg" placeholder="100 +/- 20" />
+          </label>
+          <label class="field">
+            <span>Data</span>
+            <input type="date" id="dataEnsaio" class="input-lg" />
+          </label>
+          <label class="field">
+            <span>Responsáveis</span>
+            <input type="text" id="responsaveis" class="input-lg" placeholder="Nomes" autocomplete="name" />
+          </label>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="sec-traco">
+        <h2 id="sec-traco">Traço e volume produzido</h2>
+        <div class="grid-2">
+          <label class="field">
+            <span>Volume de mistura (litros)</span>
+            <input type="number" id="volumeLitros" class="input-lg" min="0.1" step="0.1" value="20" />
+          </label>
+          <label class="field">
+            <span>Referência (por m³)</span>
+            <input type="text" class="input-lg" value="1 m³" readonly />
+          </label>
+          <label class="field full-width">
+            <span>Descrição do cimento / traço</span>
+            <input type="text" id="descricaoTraco" class="input-lg" placeholder="Ex.: CP V ARI RS - CSN (BARROSO)" />
+          </label>
+        </div>
+        <p class="hint">Informe kg/m³ e umidade (%) de cada material. O sistema calcula massa na batelada e massa corrigida.</p>
+        <div class="table-wrap">
+          <table class="data-table" id="tableMateriais">
+            <thead>
+              <tr>
+                <th>Material</th>
+                <th>kg/m³</th>
+                <th>Umidade (%)</th>
+                <th>ρ (g/cm³)</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbodyMateriais"></tbody>
+          </table>
+        </div>
+        <button type="button" id="btn-add-material" class="btn btn--secondary btn-block">+ Material</button>
+        <div class="grid-2 derived-row">
+          <label class="field">
+            <span>A/C teórico</span>
+            <input type="number" id="acTeorico" class="input-lg" step="0.01" min="0" placeholder="0,60" />
+          </label>
+          <label class="field">
+            <span>Ar teórico (%)</span>
+            <input type="number" id="arTeorico" class="input-lg" step="0.01" placeholder="1,95" />
+          </label>
+          <label class="field">
+            <span>Dosagem aditivo 1 (%)</span>
+            <input type="number" id="dosagemAditivo1" class="input-lg" step="0.01" placeholder="0,65" />
+          </label>
+          <label class="field">
+            <span>Dosagem aditivo 2 (%)</span>
+            <input type="number" id="dosagemAditivo2" class="input-lg" step="0.01" placeholder="0" />
+          </label>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="sec-ensaios">
+        <h2 id="sec-ensaios">Ensaios (slump e água)</h2>
+        <div class="table-wrap">
+          <table class="data-table" id="tableEnsaios">
+            <thead>
+              <tr>
+                <th>Traço</th>
+                <th>Aditivo · dosagem</th>
+                <th>T0 (mm)</th>
+                <th>T15 (mm)</th>
+                <th>Final (mm)</th>
+                <th>Água ini (L)</th>
+                <th>Água fin (L)</th>
+                <th>Peso (kg)</th>
+                <th>Temp (°C)</th>
+                <th>Umid (%)</th>
+                <th>Hora</th>
+                <th>Obs.</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbodyEnsaios"></tbody>
+          </table>
+        </div>
+        <button type="button" id="btn-add-ensaio" class="btn btn--secondary btn-block">+ Linha de ensaio</button>
+      </section>
+
+      <section class="card" aria-labelledby="sec-r">
+        <h2 id="sec-r">Resultado das resistências</h2>
+        <div class="table-wrap">
+          <table class="data-table" id="tableResistencias">
+            <thead>
+              <tr>
+                <th>Traço</th>
+                <th>Aditivo</th>
+                <th>R 7 dias (MPa)</th>
+                <th>R 28 dias (MPa)</th>
+                <th>Idade / data ruptura</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyResistencias"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="sec-obs">
+        <h2 id="sec-obs">Observações / manutenção</h2>
+        <label class="field">
+          <span>Texto para o rodapé do relatório</span>
+          <textarea id="observacoesGerais" class="input-lg textarea" rows="4" placeholder="Procedimento de mistura, sequência, tempo de homogeneização..."></textarea>
+        </label>
+      </section>
+    </div>
+
+    <div id="view-graficos" class="view-panel" role="tabpanel" aria-labelledby="tab-graficos">
+      <section class="card charts-card" aria-labelledby="sec-graficos">
+        <h2 id="sec-graficos">Gráficos</h2>
+        <div class="chart-box">
+          <h3>Slump T0′ · T15′ · Final (mm)</h3>
+          <canvas id="chartSlump" aria-label="Gráfico de slump"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Manutenção de slump — água final (L)</h3>
+          <canvas id="chartAgua" aria-label="Gráfico de água"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Resistências (MPa)</h3>
+          <canvas id="chartResistencia" aria-label="Gráfico de resistências"></canvas>
+        </div>
+      </section>
+    </div>
+
+    <div id="view-nuvem" class="view-panel" role="tabpanel" aria-labelledby="tab-nuvem">
+      <section class="card" aria-labelledby="sec-history">
+        <h2 id="sec-history">Histórico local</h2>
+        <p class="hint">Últimas ações neste dispositivo (PDF / planilha).</p>
+        <ul id="history-list" class="history-list" aria-live="polite"></ul>
+        <p id="history-empty" class="history-empty hidden">Nenhum registro ainda.</p>
+      </section>
+
+      <section class="card" aria-labelledby="sec-sheets">
+        <h2 id="sec-sheets">Google Sheets</h2>
+        <p id="sheet-status" class="hint">Configure <code>URL_API</code> em <code>js/app.js</code> (URL /exec do deploy).</p>
+        <div class="sheet-actions">
+          <button type="button" id="btn-sheet-save" class="btn btn--primary">Salvar na planilha</button>
+          <button type="button" id="btn-sheet-refresh" class="btn btn--secondary">Atualizar lista</button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" id="table-sheet-remote">
+            <thead id="thead-sheet-remote"></thead>
+            <tbody id="tbody-sheet-remote"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    <span id="sync-status" class="sync-status">PWA — dados locais + opcional nuvem.</span>
+  </footer>
+
+  <div id="modal-overlay" class="modal-overlay hidden" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h2 id="modal-title" class="visually-hidden">Aviso</h2>
+      <p id="modal-message" class="modal__message"></p>
+      <button type="button" id="modal-ok" class="btn btn--primary btn-block">OK</button>
+    </div>
+  </div>
+
+  <!-- CDNs: Chart.js, jsPDF, autotable -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

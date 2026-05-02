@@ -1,0 +1,13 @@
+1. Abra https://script.google.com → Novo projeto.
+2. Cole o conteúdo de Code.gs (substitua o arquivo padrão).
+3. Salve. Em Recursos/Configurações do projeto, associe a planilha se pedir; o ID já está no código (openById).
+4. Implantar → Novo implantação → Tipo: App da Web.
+   - Executar como: Eu
+   - Quem tem acesso: Qualquer pessoa
+5. Autorize o escopo (Google vai pedir na primeira vez).
+6. Copie a URL que termina em /exec (não use /dev).
+7. No PWA: js/app.js → const URL_API = 'https://script.google.com/macros/s/.../exec';
+
+Planilha: aba "Página1" (ou Sheet1). Linha 1: cabeçalhos — o script grava os títulos se estiver vazia.
+
+POST no navegador: use Content-Type text/plain (já está no fetch do app) para evitar bloqueio CORS/preflight.
