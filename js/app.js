@@ -42,6 +42,15 @@ let chartResistenciaInstance = null;
 /** Referência ao prompt de instalação PWA */
 let deferredPrompt = null;
 
+/** Últimas linhas retornadas pelo GET (para importar na aba Dados) */
+let cachedSheetRows = [];
+
+/** Ativa aba por nome (preenchido em setupTabs) */
+let activateTabFn = null;
+
+/** Callback opcional ao clicar OK no modal */
+let modalOnOk = null;
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -59,21 +68,31 @@ function setAppPill(variant, text) {
   label.textContent = text;
 }
 
-function showModal(message) {
+function showModal(message, opts = {}) {
+  const { showCancel = false, okText = 'OK', onOk = null } = opts;
+  modalOnOk = onOk;
   const overlay = $('modal-overlay');
   const msg = $('modal-message');
-  if (!overlay || !msg) return;
+  const ok = $('modal-ok');
+  const cancel = $('modal-cancel');
+  if (!overlay || !msg || !ok) return;
   msg.textContent = message;
+  ok.textContent = okText;
+  if (cancel) cancel.classList.toggle('hidden', !showCancel);
   overlay.classList.remove('hidden');
   overlay.setAttribute('aria-hidden', 'false');
-  $('modal-ok')?.focus();
+  ok.focus();
 }
 
 function closeModal() {
   const overlay = $('modal-overlay');
   if (!overlay) return;
+  modalOnOk = null;
   overlay.classList.add('hidden');
   overlay.setAttribute('aria-hidden', 'true');
+  $('modal-cancel')?.classList.add('hidden');
+  const ok = $('modal-ok');
+  if (ok) ok.textContent = 'OK';
 }
 
 function pushHistory(action, detail) {
@@ -120,10 +139,10 @@ function renderHistoryList() {
     .join('');
 }
 
-/** Opções Chart.js alinhadas ao dark mode industrial */
+/** Opções Chart.js — tema claro (cards brancos) */
 function chartThemeOptions() {
-  const text = '#B0BEC5';
-  const grid = 'rgba(255,255,255,0.08)';
+  const text = '#5a6a7e';
+  const grid = 'rgba(26, 40, 64, 0.08)';
   return {
     plugins: {
       legend: {
@@ -171,15 +190,38 @@ function setupTabs() {
       requestAnimationFrame(() => refreshCharts());
     }
   }
+  activateTabFn = activate;
   buttons.forEach((btn) => {
     btn.addEventListener('click', () => activate(btn.getAttribute('data-tab')));
   });
 }
 
+function goToTab(tab) {
+  if (typeof activateTabFn === 'function') activateTabFn(tab);
+}
+
 function setupModal() {
-  $('modal-ok')?.addEventListener('click', closeModal);
+  $('modal-ok')?.addEventListener('click', () => {
+    const fn = modalOnOk;
+    modalOnOk = null;
+    if (typeof fn === 'function') {
+      try {
+        fn();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    closeModal();
+  });
+  $('modal-cancel')?.addEventListener('click', () => {
+    modalOnOk = null;
+    closeModal();
+  });
   $('modal-overlay')?.addEventListener('click', (e) => {
-    if (e.target === $('modal-overlay')) closeModal();
+    if (e.target === $('modal-overlay')) {
+      modalOnOk = null;
+      closeModal();
+    }
   });
 }
 
@@ -489,10 +531,14 @@ async function carregarDados() {
     console.log('[Sheets] GET raw (trecho)', text.slice(0, 300));
     const data = JSON.parse(text);
     if (!data.ok) throw new Error(data.error || 'ok=false');
-    renderizarTabelaPlanilha(data.rows || []);
-    setSheetStatus('Planilha: ' + (data.rows?.length || 0) + ' linha(s).', false);
+    cachedSheetRows = Array.isArray(data.rows) ? data.rows : [];
+    renderizarTabelaPlanilha(cachedSheetRows);
+    updateImportButtonVisibility();
+    setSheetStatus('Planilha: ' + cachedSheetRows.length + ' linha(s).', false);
   } catch (err) {
     console.error('[Sheets] carregarDados', err);
+    cachedSheetRows = [];
+    updateImportButtonVisibility();
     setSheetStatus('Erro ao carregar: ' + (err.message || err), true);
     showModal('Não foi possível carregar a planilha.\n\n' + (err.message || err));
   }
@@ -529,6 +575,175 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
+/** Exibe o botão Importar só quando há linhas na planilha em cache */
+function updateImportButtonVisibility() {
+  const btn = $('btn-sheet-import');
+  if (!btn) return;
+  btn.classList.toggle('hidden', cachedSheetRows.length === 0);
+}
+
+/** Lê célula da planilha aceitando variações de nome de coluna */
+function sheetPick(row, keys) {
+  for (let i = 0; i < keys.length; i++) {
+    const k = keys[i];
+    if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k];
+  }
+  return '';
+}
+
+function formatDateFromSheet(v) {
+  if (v === '' || v == null) return '';
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v)) return v.slice(0, 10);
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toISOString().slice(0, 10);
+}
+
+/** Hora para input type=time (planilha / JSON) */
+function formatTimeFromSheet(v) {
+  if (v === '' || v == null) return '';
+  if (typeof v === 'string' && /^\d{1,2}:\d{2}/.test(v)) {
+    const m = v.match(/(\d{1,2}):(\d{2})/);
+    if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
+  }
+  const d = new Date(v);
+  if (!Number.isNaN(d.getTime())) {
+    const h = d.getHours();
+    const min = d.getMinutes();
+    return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+  }
+  return '';
+}
+
+/**
+ * Ajusta kg/m³ nos materiais existentes a partir das massas na batelha (kg) da planilha.
+ */
+function applyBatchKgM3ToMateriais(batchCimento, batchAreia, batchBrita, batchAgua) {
+  const volL = parseFloat($('volumeLitros').value) || 0;
+  const V = volL / 1000;
+  if (V <= 0) return;
+  const tbody = $('tbodyMateriais');
+  const rows = [...tbody.querySelectorAll('tr')];
+  const setKg = (re, batchKg, nomeNovo) => {
+    const b = parseFloat(batchKg);
+    if (Number.isNaN(b) || b <= 0) return;
+    const kgm3 = Math.round((b / V) * 100) / 100;
+    let tr = rows.find((r) => re.test(r.querySelector('.m-nome')?.value || ''));
+    if (!tr) {
+      tr = materialRowTemplate({ nome: nomeNovo, kgM3: kgm3, umidade: 0, rho: 0 });
+      tbody.appendChild(tr);
+    } else {
+      const inp = tr.querySelector('.m-kgm3');
+      if (inp) inp.value = String(kgm3);
+    }
+  };
+  setKg(/cimento/i, batchCimento, 'Cimento');
+  setKg(/areia/i, batchAreia, 'Areia');
+  setKg(/brita/i, batchBrita, 'Brita');
+  setKg(/água|^agua/i, batchAgua, 'Água');
+}
+
+/** Importa a última linha da planilha (cache do GET) para o formulário na aba Dados */
+function importarUltimaLinhaDaPlanilha() {
+  if (!cachedSheetRows.length) {
+    showModal('Atualize a lista da planilha antes de importar.');
+    return;
+  }
+  const row = cachedSheetRows[cachedSheetRows.length - 1];
+  const traco = String(sheetPick(row, ['Traço', 'Traco', 'traço', 'traco']) || '');
+  const vol = String(sheetPick(row, ['Volume', 'volume']) || '');
+  const dataVal = formatDateFromSheet(sheetPick(row, ['Data', 'data']));
+  const aditivo = String(sheetPick(row, ['Aditivo', 'aditivo']) || '');
+  const t0 = sheetPick(row, ['Slump_T0', 'slump_t0']);
+  const t15 = sheetPick(row, ['Slump_T15', 'slump_t15']);
+  const tf = sheetPick(row, ['Slump_Final', 'slump_final']);
+  const temp = sheetPick(row, ['Temp', 'temp']);
+  const umid = sheetPick(row, ['Umidade', 'umidade']);
+  const hora = formatTimeFromSheet(sheetPick(row, ['Hora', 'hora']));
+  const r7 = sheetPick(row, ['R7', 'r7']);
+  const r28 = sheetPick(row, ['R28', 'r28']);
+  const obs = String(sheetPick(row, ['Observações', 'Observacoes', 'observações', 'observacoes']) || '');
+
+  if (dataVal) $('dataEnsaio').value = dataVal;
+  if (vol) $('volumeLitros').value = vol;
+  if (traco) $('descricaoTraco').value = traco;
+  if (obs) $('observacoesGerais').value = obs;
+
+  const tbodyE = $('tbodyEnsaios');
+  if (!tbodyE.querySelector('tr')) tbodyE.appendChild(ensaioRowTemplate({}));
+  const trE = tbodyE.querySelector('tr');
+  if (trE) {
+    const set = (sel, val) => {
+      const el = trE.querySelector(sel);
+      if (el && val !== '' && val != null) el.value = String(val);
+    };
+    set('.e-traco', traco || 'T1');
+    set('.e-aditivo', aditivo);
+    set('.e-t0', t0);
+    set('.e-t15', t15);
+    set('.e-tf', tf);
+    set('.e-temp', temp);
+    set('.e-umid', umid);
+    set('.e-hora', hora);
+    set('.e-obs', obs);
+    set('.e-ai', sheetPick(row, ['Agua_ini', 'Água_ini']) || '');
+    set('.e-af', sheetPick(row, ['Agua_fin', 'Água_fin']) || '');
+  }
+
+  applyBatchKgM3ToMateriais(
+    sheetPick(row, ['Cimento', 'cimento']),
+    sheetPick(row, ['Areia', 'areia']),
+    sheetPick(row, ['Brita', 'brita']),
+    sheetPick(row, ['Água', 'Agua', 'água', 'agua'])
+  );
+
+  const tbodyR = $('tbodyResistencias');
+  if (!tbodyR.querySelector('tr')) tbodyR.appendChild(resistenciaRowTemplate({}));
+  const trR = tbodyR.querySelector('tr');
+  if (trR) {
+    if (traco) trR.querySelector('.r-traco').value = traco;
+    if (aditivo) trR.querySelector('.r-aditivo').value = aditivo;
+    if (r7 !== '' && r7 != null) trR.querySelector('.r7').value = String(r7);
+    if (r28 !== '' && r28 != null) trR.querySelector('.r28').value = String(r28);
+  }
+
+  recalcMateriaisPreview();
+  syncResistenciaRows();
+  saveState();
+  refreshCharts();
+  goToTab('dados');
+  setAppPill('ok', 'Importado');
+  pushHistory('Importação', traco || dataVal || 'planilha');
+  showModal('Dados da última linha da planilha aplicados na aba Dados.');
+}
+
+function limparTodosDados() {
+  showModal('Apagar todo o formulário, histórico local e cache da lista da planilha neste aparelho?', {
+    showCancel: true,
+    okText: 'Limpar',
+    onOk: () => {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(HISTORY_KEY);
+      } catch (e) {
+        console.warn(e);
+      }
+      cachedSheetRows = [];
+      updateImportButtonVisibility();
+      seedDefaults();
+      syncResistenciaRows();
+      recalcMateriaisPreview();
+      refreshCharts();
+      renderHistoryList();
+      renderizarTabelaPlanilha([]);
+      saveState();
+      goToTab('dados');
+      setAppPill('warn', 'Reset');
+      queueMicrotask(() => showModal('Dados locais limpos. Formulário restaurado ao padrão inicial.'));
+    }
+  });
+}
+
 /* ---------- Gráficos (Chart.js) — layout inspirado no relatório Sika ---------- */
 
 function shortLabel(e) {
@@ -544,9 +759,9 @@ function refreshCharts() {
   const slumpData = {
     labels,
     datasets: [
-      { label: "Slump T0' (mm)", data: ensaios.map((x) => x.t0), backgroundColor: '#00C853' },
-      { label: "Slump T15' (mm)", data: ensaios.map((x) => x.t15), backgroundColor: '#FFC107' },
-      { label: 'Slump Final (mm)', data: ensaios.map((x) => x.tf), backgroundColor: '#4FC3F7' }
+      { label: "Slump T0' (mm)", data: ensaios.map((x) => x.t0), backgroundColor: '#2563a8' },
+      { label: "Slump T15' (mm)", data: ensaios.map((x) => x.t15), backgroundColor: '#e8762a' },
+      { label: 'Slump Final (mm)', data: ensaios.map((x) => x.tf), backgroundColor: '#0d9488' }
     ]
   };
 
@@ -556,8 +771,8 @@ function refreshCharts() {
       {
         label: 'Água final (L)',
         data: ensaios.map((x) => x.aguaFin),
-        borderColor: '#FF5252',
-        backgroundColor: 'rgba(255, 82, 82, 0.18)',
+        borderColor: '#c62828',
+        backgroundColor: 'rgba(198, 40, 40, 0.12)',
         fill: true,
         tension: 0.25
       }
@@ -571,12 +786,12 @@ function refreshCharts() {
       {
         label: 'R 7 dias (MPa)',
         data: res.map((x) => (x.r7 > 0 ? x.r7 : null)),
-        backgroundColor: '#AB47BC'
+        backgroundColor: '#5c4d7d'
       },
       {
         label: 'R 28 dias (MPa)',
         data: res.map((x) => (x.r28 > 0 ? x.r28 : null)),
-        backgroundColor: '#00C853'
+        backgroundColor: '#1a7f4a'
       }
     ]
   };
@@ -596,24 +811,24 @@ function refreshCharts() {
     const emptyTheme = chartThemeOptions();
     chartSlumpInstance = new Chart($('chartSlump'), {
       type: 'bar',
-      data: { labels: ['—'], datasets: [{ label: 'Sem dados', data: [0], backgroundColor: '#546E7A' }] },
+      data: { labels: ['—'], datasets: [{ label: 'Sem dados', data: [0], backgroundColor: '#90a4ae' }] },
       options: { responsive: true, plugins: { legend: { display: false } }, scales: emptyTheme.scales }
     });
     chartAguaInstance = new Chart($('chartAgua'), {
       type: 'line',
-      data: { labels: ['—'], datasets: [{ label: 'Sem dados', data: [0], borderColor: '#546E7A' }] },
+      data: { labels: ['—'], datasets: [{ label: 'Sem dados', data: [0], borderColor: '#90a4ae' }] },
       options: { responsive: true, plugins: { legend: { display: false } }, scales: emptyTheme.scales }
     });
     chartResistenciaInstance = new Chart($('chartResistencia'), {
       type: 'bar',
-      data: { labels: ['—'], datasets: [{ label: 'Sem dados', data: [0], backgroundColor: '#546E7A' }] },
+      data: { labels: ['—'], datasets: [{ label: 'Sem dados', data: [0], backgroundColor: '#90a4ae' }] },
       options: { responsive: true, plugins: { legend: { display: false } }, scales: emptyTheme.scales }
     });
     return;
   }
 
   const tc = chartThemeOptions();
-  const axisTitle = (text) => ({ display: true, text, color: '#B0BEC5', font: { size: 11, weight: '600' } });
+  const axisTitle = (text) => ({ display: true, text, color: '#5a6a7e', font: { size: 11, weight: '600' } });
 
   if (chartSlumpInstance) chartSlumpInstance.destroy();
   chartSlumpInstance = new Chart($('chartSlump'), {
@@ -680,7 +895,7 @@ function buildPdf() {
   const materiais = readMateriaisFromDom();
 
   doc.setFontSize(14);
-  doc.setTextColor(0, 200, 83);
+  doc.setTextColor(26, 58, 92);
   doc.text('Relatório — Controle de Slump (concreto)', margin, y);
   y += 7;
   doc.setFontSize(10);
@@ -718,7 +933,7 @@ function buildPdf() {
     head: [['Material', 'kg/m³', 'Massa seca (kg)', 'U (%)', 'Massa corr. (kg)', 'ρ (g/cm³)']],
     body: matBody,
     styles: { fontSize: 8 },
-    headStyles: { fillColor: [0, 131, 71] },
+    headStyles: { fillColor: [26, 58, 92] },
     margin: { left: margin, right: margin }
   });
   y = doc.lastAutoTable.finalY + 6;
@@ -1031,6 +1246,8 @@ $('btn-pdf').addEventListener('click', () => {
 
 $('btn-sheet-save')?.addEventListener('click', () => salvarDados());
 $('btn-sheet-refresh')?.addEventListener('click', () => carregarDados());
+$('btn-sheet-import')?.addEventListener('click', () => importarUltimaLinhaDaPlanilha());
+$('btn-clear-all')?.addEventListener('click', () => limparTodosDados());
 
 setupTabs();
 setupModal();
@@ -1046,4 +1263,5 @@ else seedDefaults();
 syncResistenciaRows();
 refreshCharts();
 
+updateImportButtonVisibility();
 carregarDados();

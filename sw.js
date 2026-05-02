@@ -6,7 +6,8 @@ const APP_SHELL = [
   './css/styles.css',
   './js/app.js',
   './manifest.json',
-  './icons/icon.svg'
+  './icons/icon.svg',
+  './assets/img/logo-concretrack.svg'
 ];
 const LIB_CDN = [
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',

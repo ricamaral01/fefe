@@ -2,34 +2,48 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#1F242C" />
-  <meta name="description" content="Relatório de controle de slump — laboratório de concreto (PWA offline)" />
-  <title>Slump Lab — Controle de ensaio</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>CONCRETRACK • Slump Lab</title>
+  <meta name="description" content="Controle de slump — laboratório / campo (PWA)" />
+  <link rel="icon" type="image/svg+xml" href="assets/img/logo-concretrack.svg" />
+  <link rel="apple-touch-icon" href="assets/img/logo-concretrack.svg" />
   <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1a3a5c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <link rel="stylesheet" href="css/styles.css" />
-  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="icons/icon.svg" />
 </head>
 <body>
-  <header class="app-header">
-    <div class="app-header__top">
+  <header class="topbar">
+    <div class="topbar-brand">
+      <img src="assets/img/logo-concretrack.svg" width="40" height="40" alt="" />
       <div>
-        <h1>Slump Lab</h1>
-        <p class="subtitle">Controle de slump · laboratório / campo · PWA</p>
+        <div class="brand-name">CONCRETRACK<span> • Slump</span></div>
+        <div class="brand-sub">Campo / laboratório</div>
       </div>
-      <div class="header-actions">
-        <span id="app-status-pill" class="pill pill--ok" title="Estado do app">
-          <span class="pill__dot" aria-hidden="true"></span>
-          <span id="app-status-text">Pronto</span>
-        </span>
-        <button type="button" id="btn-install" class="btn btn--secondary hidden" aria-label="Instalar app">Instalar</button>
-        <button type="button" id="btn-pdf" class="btn btn--primary" aria-label="Gerar PDF">PDF</button>
-      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="app-status-pill" class="pill pill--ok" title="Estado">
+        <span class="pill__dot" aria-hidden="true"></span>
+        <span id="app-status-text">Pronto</span>
+      </span>
+      <button type="button" id="btn-clear-all" class="btn btn--danger-outline">Limpar dados</button>
+      <button type="button" id="btn-install" class="btn btn--secondary hidden">Instalar</button>
+      <button type="button" id="btn-pdf" class="btn btn--accent">PDF</button>
     </div>
   </header>
 
-  <nav class="segmented container" role="tablist" aria-label="Seções do aplicativo">
+  <section class="hero">
+    <div class="hero-icon" aria-hidden="true">▣</div>
+    <h1>Nova aplicação <span>Slump</span></h1>
+    <p>Registro de ensaios, gráficos e sincronização com planilha.</p>
+    <div class="accent-line" aria-hidden="true"></div>
+  </section>
+
+  <nav class="segmented" role="tablist" aria-label="Seções">
     <button type="button" class="segmented__btn is-active" data-tab="dados" role="tab" aria-selected="true" id="tab-dados">
       <span class="segmented__icon" aria-hidden="true">▣</span>
       <span>Dados</span>
@@ -44,10 +58,10 @@
     </button>
   </nav>
 
-  <main class="container">
+  <main class="main-content">
     <div id="view-dados" class="view-panel is-visible" role="tabpanel" aria-labelledby="tab-dados">
-      <section class="card" aria-labelledby="sec-geral">
-        <h2 id="sec-geral">Dados do ensaio</h2>
+      <section class="section-card" aria-labelledby="sec-geral">
+        <h2 class="section-title" id="sec-geral"><span>▸</span> Dados do ensaio</h2>
         <div class="grid-2">
           <label class="field">
             <span>Objetivo</span>
@@ -76,8 +90,8 @@
         </div>
       </section>
 
-      <section class="card" aria-labelledby="sec-traco">
-        <h2 id="sec-traco">Traço e volume produzido</h2>
+      <section class="section-card" aria-labelledby="sec-traco">
+        <h2 class="section-title" id="sec-traco"><span>▸</span> Traço e volume</h2>
         <div class="grid-2">
           <label class="field">
             <span>Volume de mistura (litros)</span>
@@ -128,8 +142,8 @@
         </div>
       </section>
 
-      <section class="card" aria-labelledby="sec-ensaios">
-        <h2 id="sec-ensaios">Ensaios (slump e água)</h2>
+      <section class="section-card" aria-labelledby="sec-ensaios">
+        <h2 class="section-title" id="sec-ensaios"><span>▸</span> Ensaios (slump e água)</h2>
         <div class="table-wrap">
           <table class="data-table" id="tableEnsaios">
             <thead>
@@ -155,8 +169,8 @@
         <button type="button" id="btn-add-ensaio" class="btn btn--secondary btn-block">+ Linha de ensaio</button>
       </section>
 
-      <section class="card" aria-labelledby="sec-r">
-        <h2 id="sec-r">Resultado das resistências</h2>
+      <section class="section-card" aria-labelledby="sec-r">
+        <h2 class="section-title" id="sec-r"><span>▸</span> Resistências</h2>
         <div class="table-wrap">
           <table class="data-table" id="tableResistencias">
             <thead>
@@ -173,47 +187,48 @@
         </div>
       </section>
 
-      <section class="card" aria-labelledby="sec-obs">
-        <h2 id="sec-obs">Observações / manutenção</h2>
+      <section class="section-card" aria-labelledby="sec-obs">
+        <h2 class="section-title" id="sec-obs"><span>▸</span> Observações / manutenção</h2>
         <label class="field">
           <span>Texto para o rodapé do relatório</span>
-          <textarea id="observacoesGerais" class="input-lg textarea" rows="4" placeholder="Procedimento de mistura, sequência, tempo de homogeneização..."></textarea>
+          <textarea id="observacoesGerais" class="input-lg textarea" rows="4" placeholder="Procedimento de mistura..."></textarea>
         </label>
       </section>
     </div>
 
     <div id="view-graficos" class="view-panel" role="tabpanel" aria-labelledby="tab-graficos">
-      <section class="card charts-card" aria-labelledby="sec-graficos">
-        <h2 id="sec-graficos">Gráficos</h2>
+      <section class="section-card charts-card" aria-labelledby="sec-graficos">
+        <h2 class="section-title" id="sec-graficos"><span>▸</span> Gráficos</h2>
         <div class="chart-box">
-          <h3>Slump T0′ · T15′ · Final (mm)</h3>
+          <h3 class="chart-label">Slump T0′ · T15′ · Final (mm)</h3>
           <canvas id="chartSlump" aria-label="Gráfico de slump"></canvas>
         </div>
         <div class="chart-box">
-          <h3>Manutenção de slump — água final (L)</h3>
+          <h3 class="chart-label">Manutenção — água final (L)</h3>
           <canvas id="chartAgua" aria-label="Gráfico de água"></canvas>
         </div>
         <div class="chart-box">
-          <h3>Resistências (MPa)</h3>
+          <h3 class="chart-label">Resistências (MPa)</h3>
           <canvas id="chartResistencia" aria-label="Gráfico de resistências"></canvas>
         </div>
       </section>
     </div>
 
     <div id="view-nuvem" class="view-panel" role="tabpanel" aria-labelledby="tab-nuvem">
-      <section class="card" aria-labelledby="sec-history">
-        <h2 id="sec-history">Histórico local</h2>
-        <p class="hint">Últimas ações neste dispositivo (PDF / planilha).</p>
+      <section class="section-card" aria-labelledby="sec-history">
+        <h2 class="section-title" id="sec-history"><span>▸</span> Histórico local</h2>
+        <p class="hint">Últimas ações neste dispositivo.</p>
         <ul id="history-list" class="history-list" aria-live="polite"></ul>
         <p id="history-empty" class="history-empty hidden">Nenhum registro ainda.</p>
       </section>
 
-      <section class="card" aria-labelledby="sec-sheets">
-        <h2 id="sec-sheets">Google Sheets</h2>
-        <p id="sheet-status" class="hint">Configure <code>URL_API</code> em <code>js/app.js</code> (URL /exec do deploy).</p>
+      <section class="section-card" aria-labelledby="sec-sheets">
+        <h2 class="section-title" id="sec-sheets"><span>▸</span> Google Sheets</h2>
+        <p id="sheet-status" class="hint">Lista carregada da Web App.</p>
         <div class="sheet-actions">
           <button type="button" id="btn-sheet-save" class="btn btn--primary">Salvar na planilha</button>
           <button type="button" id="btn-sheet-refresh" class="btn btn--secondary">Atualizar lista</button>
+          <button type="button" id="btn-sheet-import" class="btn btn--accent hidden">Importar última linha → Dados</button>
         </div>
         <div class="table-wrap">
           <table class="data-table" id="table-sheet-remote">
@@ -226,18 +241,20 @@
   </main>
 
   <footer class="app-footer">
-    <span id="sync-status" class="sync-status">PWA — dados locais + opcional nuvem.</span>
+    <span id="sync-status" class="sync-status">PWA — dados locais + nuvem.</span>
   </footer>
 
   <div id="modal-overlay" class="modal-overlay hidden" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <h2 id="modal-title" class="visually-hidden">Aviso</h2>
+      <h2 id="modal-title" class="visually-hidden">Mensagem</h2>
       <p id="modal-message" class="modal__message"></p>
-      <button type="button" id="modal-ok" class="btn btn--primary btn-block">OK</button>
+      <div class="modal__actions">
+        <button type="button" id="modal-cancel" class="btn btn--secondary hidden">Cancelar</button>
+        <button type="button" id="modal-ok" class="btn btn--primary">OK</button>
+      </div>
     </div>
   </div>
 
-  <!-- CDNs: Chart.js, jsPDF, autotable -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>

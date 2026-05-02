@@ -4,7 +4,7 @@
   "description": "Relatório de controle de slump para laboratório de concreto",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#1F242C",
+  "background_color": "#f0f4f8",
   "theme_color": "#00C853",
   "orientation": "portrait-primary",
   "icons": [
