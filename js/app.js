@@ -320,6 +320,127 @@ function recalcMateriaisPreview() {
     const mCorr = mSeco * (1 + u / 100);
     tr.dataset.preview = `${mSeco.toFixed(2)} kg → corrig. ${mCorr.toFixed(2)} kg`;
   });
+
+  // Atualiza campos calculados (espelho do XLSX)
+  computeDerivedFromSpreadsheetModel();
+}
+
+/**
+ * Replica os principais campos calculados na planilha XLSX:
+ * - Massa batelada: kg/m³ × (V_litros/1000)
+ * - Massa corrigida: massa seca × (1 + U/100)
+ * - Água corrigida (batelada): Água seca - (água livre trazida pelos agregados úmidos)
+ * - Aditivo 1 (kg/m³): dosagem × (cimento + adição)
+ * - A/C teórico: água / (cimento+adição) (se o usuário não preencheu manualmente)
+ * - Volume total (L): 1000 × (1 - arTeorico/100)
+ * - Densidade teórica (kg/m³): soma de kg/m³ (cimento + adição + areia fina+grossa + britas)
+ * - Argamassa (%): (cimento+adição+areias) / (cimento+adição+areias+britas)
+ * - H (%): água / (cimento+adição+areias+britas)
+ *
+ * Partes críticas: dependem do nome do material para classificar.
+ */
+function computeDerivedFromSpreadsheetModel() {
+  const mats = readMateriaisFromDom();
+  const volL = parseFloat($('volumeLitros').value) || 0;
+  const V = volL / 1000;
+  if (!V) return;
+
+  const by = (re) => mats.filter((m) => re.test(m.nome || ''));
+  const sumKgM3 = (arr) => arr.reduce((a, m) => a + (m.kgM3 || 0), 0);
+
+  const cimento = sumKgM3(by(/cimento/i));
+  const adicao = sumKgM3(by(/adi(c|ç)ao|adi(c|ç)ão/i));
+  const areia = sumKgM3(by(/areia/i));
+  const areiaFina = sumKgM3(by(/areia.*fina/i));
+  const areiaGrossa = sumKgM3(by(/areia.*grossa/i));
+  const britas = sumKgM3(by(/brita/i));
+  const brita0 = sumKgM3(by(/brita\\s*0/i));
+  const brita1 = sumKgM3(by(/brita\\s*1/i));
+  const agua = sumKgM3(by(/^(água|agua)$/i).length ? by(/^(água|agua)$/i) : by(/água|agua/i));
+
+  // água livre trazida pelos agregados: (m_corr - m_seco) de areias/britas com umidade
+  const agg = mats.filter((m) => /areia|brita/i.test(m.nome || ''));
+  const waterFromAggKg = agg.reduce((acc, m) => {
+    const mSeco = (m.kgM3 || 0) * V;
+    const mCorr = mSeco * (1 + (m.umidade || 0) / 100);
+    return acc + (mCorr - mSeco);
+  }, 0);
+
+  // Água corrigida (batelada) em kg ~ L
+  const aguaBateladaKg = agua * V;
+  const aguaCorrigidaKg = aguaBateladaKg - waterFromAggKg;
+
+  // Aditivo 1 kg/m³: dosagem (%) × (cimento + adição)
+  const dos1 = (parseFloat($('dosagemAditivo1').value) || 0) / 100;
+  const aditivo1 = dos1 * (cimento + adicao);
+
+  // A/C teórico (se usuário deixou em branco)
+  const acCalc = (cimento + adicao) > 0 ? agua / (cimento + adicao) : 0;
+  if ($('acTeorico') && (!$('acTeorico').value || Number.isNaN(parseFloat($('acTeorico').value)))) {
+    $('acTeorico').value = acCalc ? acCalc.toFixed(2) : '';
+  }
+
+  // Volume total L (planilha: 1000 × (1 - arTeorico/100))
+  const ar = parseFloat($('arTeorico').value) || 0;
+  const volTotal = 1000 * (1 - ar / 100);
+
+  // Densidade teórica (kg/m³) = soma cimento+adição+areias+britas (igual ao XLSX)
+  const densTeor = (cimento + adicao + areia + britas);
+
+  // Argamassa (%) conforme XLSX: (cimento+adição+areia fina+areia grossa) / total(sólidos)
+  const arg = (cimento + adicao + areiaFina + areiaGrossa);
+  const totalSolidos = (cimento + adicao + areiaFina + areiaGrossa + brita0 + brita1) || (cimento + adicao + areia + britas);
+  const argPct = totalSolidos ? (arg / totalSolidos) * 100 : 0;
+
+  // H (%) conforme XLSX: água / (cimento+adição+areias+britas)
+  const hPct = (cimento + adicao + areia + britas) ? (agua / (cimento + adicao + areia + britas)) * 100 : 0;
+
+  // Escreve nos campos read-only
+  const set = (id, v) => {
+    const el = $(id);
+    if (!el) return;
+    el.value = v;
+  };
+  set('aguaCorrigidaLitros', Number.isFinite(aguaCorrigidaKg) ? aguaCorrigidaKg.toFixed(2) : '');
+  set('volumeTotalLitros', Number.isFinite(volTotal) ? volTotal.toFixed(2) : '');
+  set('densidadeTeorica', Number.isFinite(densTeor) ? densTeor.toFixed(0) : '');
+  set('argamassaPct', Number.isFinite(argPct) ? argPct.toFixed(2) : '');
+  set('hPct', Number.isFinite(hPct) ? hPct.toFixed(2) : '');
+  set('aditivo1KgM3', Number.isFinite(aditivo1) ? aditivo1.toFixed(2) : '');
+
+  // Atualiza dados do traço (nova seção)
+  updateDadosTraco(cimento, adicao, areiaFina, areiaGrossa, brita0, brita1, agua, britas, totalSolidos, volTotal, argPct, hPct, densTeor, ar);
+}
+
+/**
+ * Atualiza os campos da seção "Dados do Traço" com proporções dos materiais
+ */
+function updateDadosTraco(cimento, adicao, areiaFina, areiaGrossa, brita0, brita1, agua, britas, totalSolidos, volTotal, argPct, hPct, densTeor, ar) {
+  const set = (id, v) => {
+    const el = $(id);
+    if (!el) return;
+    el.value = v;
+  };
+
+  // Valores principais
+  set('dadoTracoArgamassa', Number.isFinite(argPct) ? argPct.toFixed(2) : '');
+  set('dadoTracoH', Number.isFinite(hPct) ? hPct.toFixed(2) : '');
+  set('dadoTracoDensidade', Number.isFinite(densTeor) ? densTeor.toFixed(0) : '');
+  set('dadoTracoAr', Number.isFinite(ar) ? ar.toFixed(2) : '');
+  set('dadoTracoVolume', Number.isFinite(volTotal) ? volTotal.toFixed(2) : '');
+
+  // Proporções dos materiais (%)
+  if (totalSolidos > 0) {
+    set('dadoTracoBrita0', (brita0 / totalSolidos * 100).toFixed(2));
+    set('dadoTracoBrita1', (brita1 / totalSolidos * 100).toFixed(2));
+    set('dadoTracoAreiaFina', (areiaFina / totalSolidos * 100).toFixed(2));
+    set('dadoTracoAreiaGrossa', (areiaGrossa / totalSolidos * 100).toFixed(2));
+  } else {
+    set('dadoTracoBrita0', '');
+    set('dadoTracoBrita1', '');
+    set('dadoTracoAreiaFina', '');
+    set('dadoTracoAreiaGrossa', '');
+  }
 }
 
 /* ---------- Ensaios e resistências ---------- */
@@ -427,9 +548,15 @@ function syncResistenciaRows() {
 
 function setSheetStatus(msg, isErr) {
   const el = $('sheet-status');
-  if (!el) return;
-  el.textContent = msg;
-  el.classList.toggle('sheet-err', !!isErr);
+  const el2 = $('sheet-status-dados');
+  if (el) {
+    el.textContent = msg;
+    el.classList.toggle('sheet-err', !!isErr);
+  }
+  if (el2) {
+    el2.textContent = msg;
+    el2.classList.toggle('sheet-err', !!isErr);
+  }
   console.log('[Sheets]', msg);
   if (isErr) setAppPill('err', 'Planilha');
   else if (/Salvando|Carregando/i.test(msg)) setAppPill('warn', 'Nuvem…');
@@ -578,8 +705,11 @@ function escapeHtml(s) {
 /** Exibe o botão Importar só quando há linhas na planilha em cache */
 function updateImportButtonVisibility() {
   const btn = $('btn-sheet-import');
-  if (!btn) return;
-  btn.classList.toggle('hidden', cachedSheetRows.length === 0);
+  const btn2 = $('btn-sheet-import-select');
+  if (!btn && !btn2) return;
+  const hidden = cachedSheetRows.length === 0;
+  if (btn) btn.classList.toggle('hidden', hidden);
+  if (btn2) btn2.classList.toggle('hidden', hidden);
 }
 
 /** Lê célula da planilha aceitando variações de nome de coluna */
@@ -715,6 +845,133 @@ function importarUltimaLinhaDaPlanilha() {
   setAppPill('ok', 'Importado');
   pushHistory('Importação', traco || dataVal || 'planilha');
   showModal('Dados da última linha da planilha aplicados na aba Dados.');
+}
+
+/**
+ * Importar linha selecionável — abre modal com lista de linhas para escolher qual importar
+ */
+function importarLinhaComSelecao() {
+  if (!cachedSheetRows.length) {
+    showModal('Atualize a lista da planilha antes de importar.');
+    return;
+  }
+
+  // Cria lista de opções (data + traço)
+  const linhas = cachedSheetRows.map((row, idx) => {
+    const dataVal = formatDateFromSheet(sheetPick(row, ['Data', 'data']));
+    const traco = String(sheetPick(row, ['Traço', 'Traco', 'traço', 'traco']) || '');
+    const label = `${idx + 1}. ${dataVal || '—'} · ${traco || '—'}`;
+    return { idx, label, row };
+  });
+
+  // Cria elemento select dentro de um modal customizado
+  const selectId = 'import-select-' + Date.now();
+  const container = document.createElement('div');
+  container.innerHTML = `
+    <p style="margin-bottom: 12px; font-size: 0.9rem;">Qual linha deseja importar?</p>
+    <select id="${selectId}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.9rem;">
+      ${linhas.map((l) => `<option value="${l.idx}">${escapeHtml(l.label)}</option>`).join('')}
+    </select>
+  `;
+
+  const overlay = $('modal-overlay');
+  const msgEl = $('modal-message');
+  const okBtn = $('modal-ok');
+  const cancelBtn = $('modal-cancel');
+
+  if (!overlay || !msgEl || !okBtn || !cancelBtn) return;
+
+  // Limpa mensagem e adiciona select
+  msgEl.innerHTML = '';
+  msgEl.appendChild(container);
+
+  // Configura ação ao clicar OK
+  modalOnOk = () => {
+    const select = document.getElementById(selectId);
+    if (select) {
+      const idx = parseInt(select.value);
+      const row = cachedSheetRows[idx];
+      if (row) importarLinhaPlanilhaByRow(row);
+    }
+  };
+
+  cancelBtn.classList.remove('hidden');
+  okBtn.textContent = 'Importar';
+  overlay.classList.remove('hidden');
+  overlay.setAttribute('aria-hidden', 'false');
+  okBtn.focus();
+}
+
+/**
+ * Importa uma linha específica da planilha (função auxiliar)
+ */
+function importarLinhaPlanilhaByRow(row) {
+  const traco = String(sheetPick(row, ['Traço', 'Traco', 'traço', 'traco']) || '');
+  const vol = String(sheetPick(row, ['Volume', 'volume']) || '');
+  const dataVal = formatDateFromSheet(sheetPick(row, ['Data', 'data']));
+  const aditivo = String(sheetPick(row, ['Aditivo', 'aditivo']) || '');
+  const t0 = sheetPick(row, ['Slump_T0', 'slump_t0']);
+  const t15 = sheetPick(row, ['Slump_T15', 'slump_t15']);
+  const tf = sheetPick(row, ['Slump_Final', 'slump_final']);
+  const temp = sheetPick(row, ['Temp', 'temp']);
+  const umid = sheetPick(row, ['Umidade', 'umidade']);
+  const hora = formatTimeFromSheet(sheetPick(row, ['Hora', 'hora']));
+  const r7 = sheetPick(row, ['R7', 'r7']);
+  const r28 = sheetPick(row, ['R28', 'r28']);
+  const obs = String(sheetPick(row, ['Observações', 'Observacoes', 'observações', 'observacoes']) || '');
+
+  if (dataVal) $('dataEnsaio').value = dataVal;
+  if (vol) $('volumeLitros').value = vol;
+  if (traco) $('descricaoTraco').value = traco;
+  if (obs) $('observacoesGerais').value = obs;
+
+  const tbodyE = $('tbodyEnsaios');
+  if (!tbodyE.querySelector('tr')) tbodyE.appendChild(ensaioRowTemplate({}));
+  const trE = tbodyE.querySelector('tr');
+  if (trE) {
+    const set = (sel, val) => {
+      const el = trE.querySelector(sel);
+      if (el && val !== '' && val != null) el.value = String(val);
+    };
+    set('.e-traco', traco || 'T1');
+    set('.e-aditivo', aditivo);
+    set('.e-t0', t0);
+    set('.e-t15', t15);
+    set('.e-tf', tf);
+    set('.e-temp', temp);
+    set('.e-umid', umid);
+    set('.e-hora', hora);
+    set('.e-obs', obs);
+    set('.e-ai', sheetPick(row, ['Agua_ini', 'Água_ini']) || '');
+    set('.e-af', sheetPick(row, ['Agua_fin', 'Água_fin']) || '');
+  }
+
+  applyBatchKgM3ToMateriais(
+    sheetPick(row, ['Cimento', 'cimento']),
+    sheetPick(row, ['Areia', 'areia']),
+    sheetPick(row, ['Brita', 'brita']),
+    sheetPick(row, ['Água', 'Agua', 'água', 'agua'])
+  );
+
+  const tbodyR = $('tbodyResistencias');
+  if (!tbodyR.querySelector('tr')) tbodyR.appendChild(resistenciaRowTemplate({}));
+  const trR = tbodyR.querySelector('tr');
+  if (trR) {
+    if (traco) trR.querySelector('.r-traco').value = traco;
+    if (aditivo) trR.querySelector('.r-aditivo').value = aditivo;
+    if (r7 !== '' && r7 != null) trR.querySelector('.r7').value = String(r7);
+    if (r28 !== '' && r28 != null) trR.querySelector('.r28').value = String(r28);
+  }
+
+  recalcMateriaisPreview();
+  syncResistenciaRows();
+  saveState();
+  refreshCharts();
+  goToTab('dados');
+  setAppPill('ok', 'Importado');
+  pushHistory('Importação', traco || dataVal || 'planilha');
+  closeModal();
+  showModal('Dados da linha importados na aba Dados.');
 }
 
 function limparTodosDados() {
@@ -896,7 +1153,7 @@ function buildPdf() {
 
   doc.setFontSize(14);
   doc.setTextColor(26, 58, 92);
-  doc.text('Relatório — Controle de Slump (concreto)', margin, y);
+  doc.text('Relatório — Análise de Desempenho de Aditivos', margin, y);
   y += 7;
   doc.setFontSize(10);
   doc.setTextColor(40, 40, 40);
@@ -946,6 +1203,32 @@ function buildPdf() {
     y
   );
   y += 8;
+
+  // SEÇÃO: DADOS DO TRAÇO
+  doc.setFontSize(11);
+  doc.text('Dados do Traço', margin, y);
+  y += 4;
+  const traceDataBody = [
+    ['Argamassa (%)', $('dadoTracoArgamassa').value || '—'],
+    ['H - Umidade (%)', $('dadoTracoH').value || '—'],
+    ['Densidade Teórica (kg/m³)', $('dadoTracoDensidade').value || '—'],
+    ['Volume total (L)', $('dadoTracoVolume').value || '—'],
+    ['Ar teórico (%)', $('dadoTracoAr').value || '—'],
+    ['Brita 0 (%)', $('dadoTracoBrita0').value || '—'],
+    ['Brita 1 (%)', $('dadoTracoBrita1').value || '—'],
+    ['Areia Natural Fina (%)', $('dadoTracoAreiaFina').value || '—'],
+    ['Areia Natural Grossa (%)', $('dadoTracoAreiaGrossa').value || '—']
+  ];
+  doc.autoTable({
+    startY: y,
+    head: [['Parâmetro', 'Valor']],
+    body: traceDataBody,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [156, 39, 176] },
+    columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 40 } },
+    margin: { left: margin, right: margin }
+  });
+  y = doc.lastAutoTable.finalY + 8;
 
   const ensaios = readEnsaiosFromDom();
   doc.autoTable({
@@ -1005,26 +1288,151 @@ function buildPdf() {
     y += split.length * 4 + 6;
   }
 
-  /* Gráficos em nova página */
+  /* Gráficos em nova página — render fixo para não estourar na impressão */
   doc.addPage();
   y = margin;
   doc.setFontSize(12);
-  doc.text('Gráficos', margin, y);
+  doc.text('Gráficos (modelo planilha)', margin, y);
   y += 6;
+
   const imgW = pageW - 2 * margin;
-  const imgH = 55;
-  y = addChartImage(doc, chartSlumpInstance, margin, y, imgW, imgH);
-  y = addChartImage(doc, chartAguaInstance, margin, y, imgW, imgH);
-  if (y + imgH > doc.internal.pageSize.getHeight() - margin) {
+  const h1 = 70;
+  const h2 = 60;
+
+  const pdfCharts = renderChartsForPdf();
+  y = addImageDataUrl(doc, pdfCharts.slumpBars, margin, y, imgW, h1);
+  if (y + h2 > doc.internal.pageSize.getHeight() - margin) {
     doc.addPage();
     y = margin;
   }
-  addChartImage(doc, chartResistenciaInstance, margin, y, imgW, imgH);
+  y = addImageDataUrl(doc, pdfCharts.slumpMaintenance, margin, y, imgW, h2);
+  if (y + h2 > doc.internal.pageSize.getHeight() - margin) {
+    doc.addPage();
+    y = margin;
+  }
+  addImageDataUrl(doc, pdfCharts.resistencia, margin, y, imgW, h2);
 
   const nomeArquivo = `relatorio-slump-${$('dataEnsaio').value || new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(nomeArquivo);
   pushHistory('PDF', nomeArquivo);
   setAppPill('ok', 'PDF gerado');
+}
+
+function addImageDataUrl(doc, dataUrl, x, y, w, h) {
+  if (!dataUrl) return y;
+  try {
+    doc.addImage(dataUrl, 'PNG', x, y, w, h);
+    return y + h + 6;
+  } catch {
+    return y;
+  }
+}
+
+/**
+ * Renderiza charts específicos para PDF (tamanho fixo, fundo branco).
+ * Ajuste crítico: gráficos responsivos no DOM mudam de tamanho e estouram no PDF.
+ */
+function renderChartsForPdf() {
+  const ensaios = readEnsaiosFromDom();
+  const res = readResistenciasFromDom();
+
+  const labels = ensaios.map((e) => (e.aditivo || e.traco || '—').toString().slice(0, 32));
+  const t0 = ensaios.map((e) => e.t0 || 0);
+  const t15 = ensaios.map((e) => e.t15 || 0);
+  const tf = ensaios.map((e) => e.tf || 0);
+
+  // 1) Barras agrupadas (igual tabela slump: T0/T15/Final por aditivo)
+  const slumpBars = makeChartPng(900, 420, (ctx) => {
+    return new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: "Slump T0' (mm)", data: t0, backgroundColor: '#2563a8' },
+          { label: "Slump T15' (mm)", data: t15, backgroundColor: '#e8762a' },
+          { label: 'Slump Final (mm)', data: tf, backgroundColor: '#0d9488' }
+        ]
+      },
+      options: {
+        responsive: false,
+        animation: false,
+        plugins: {
+          legend: { position: 'bottom' },
+          title: { display: true, text: "Slump T0' · T15' · Final (mm)" }
+        },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'mm' } } }
+      }
+    });
+  });
+
+  // 2) Manutenção de slump: linhas por aditivo em (0,15,30) minutos (aproxima o gráfico da planilha)
+  const minutes = ['0', '15', '30'];
+  const slumpMaintenance = makeChartPng(900, 360, (ctx) => {
+    const colors = ['#1a3a5c', '#2563a8', '#e8762a', '#0d9488', '#5c4d7d'];
+    return new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: minutes,
+        datasets: ensaios.map((e, i) => ({
+          label: (e.aditivo || e.traco || `S${i + 1}`).toString().slice(0, 40),
+          data: [e.t0 || 0, e.t15 || 0, e.tf || 0],
+          borderColor: colors[i % colors.length],
+          backgroundColor: 'transparent',
+          tension: 0.25,
+          pointRadius: 3
+        }))
+      },
+      options: {
+        responsive: false,
+        animation: false,
+        plugins: {
+          legend: { position: 'bottom' },
+          title: { display: true, text: 'Manutenção de SLUMP (mm) — 0/15/Final' }
+        },
+        scales: {
+          y: { beginAtZero: false, title: { display: true, text: 'mm' } },
+          x: { title: { display: true, text: 'min' } }
+        }
+      }
+    });
+  });
+
+  // 3) Resistências: barras R7/R28 por aditivo
+  const rLabels = res.length ? res.map((r) => (r.aditivo || r.traco || '—').toString().slice(0, 32)) : labels;
+  const resistencia = makeChartPng(900, 360, (ctx) => {
+    return new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: rLabels,
+        datasets: [
+          { label: 'R 7 DIAS (MPa)', data: res.map((r) => r.r7 || 0), backgroundColor: '#1a3a5c' },
+          { label: 'R 28 DIAS (MPa)', data: res.map((r) => r.r28 || 0), backgroundColor: '#1a7f4a' }
+        ]
+      },
+      options: {
+        responsive: false,
+        animation: false,
+        plugins: { legend: { position: 'bottom' }, title: { display: true, text: 'RESISTÊNCIAS (MPa)' } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: 'MPa' } } }
+      }
+    });
+  });
+
+  return { slumpBars, slumpMaintenance, resistencia };
+}
+
+function makeChartPng(width, height, buildChart) {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  // fundo branco para PDF
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  const chart = buildChart(canvas);
+  const url = canvas.toDataURL('image/png', 1.0);
+  chart.destroy();
+  return url;
 }
 
 /* ---------- Dados iniciais (espelho do exemplo Sika / laboratório) ---------- */
@@ -1247,6 +1655,8 @@ $('btn-pdf').addEventListener('click', () => {
 $('btn-sheet-save')?.addEventListener('click', () => salvarDados());
 $('btn-sheet-refresh')?.addEventListener('click', () => carregarDados());
 $('btn-sheet-import')?.addEventListener('click', () => importarUltimaLinhaDaPlanilha());
+$('btn-sheet-refresh-dados')?.addEventListener('click', () => carregarDados());
+$('btn-sheet-import-select')?.addEventListener('click', () => importarLinhaComSelecao());
 $('btn-clear-all')?.addEventListener('click', () => limparTodosDados());
 
 setupTabs();

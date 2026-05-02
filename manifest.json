@@ -1,7 +1,7 @@
 {
-  "name": "Controle de Slump — Concreto",
-  "short_name": "Slump Lab",
-  "description": "Relatório de controle de slump para laboratório de concreto",
+  "name": "Análise de desempenho de aditivos",
+  "short_name": "Análise Aditivos",
+  "description": "Análise de desempenho de aditivos para concreto — Controle de slump e resistências",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f0f4f8",

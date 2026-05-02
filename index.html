@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>CONCRETRACK • Slump Lab</title>
-  <meta name="description" content="Controle de slump — laboratório / campo (PWA)" />
+  <title>Análise de Desempenho de Aditivos</title>
+  <meta name="description" content="Análise de desempenho de aditivos para concreto — Controle de slump e resistências" />
   <link rel="icon" type="image/svg+xml" href="assets/img/logo-concretrack.svg" />
   <link rel="apple-touch-icon" href="assets/img/logo-concretrack.svg" />
   <link rel="manifest" href="manifest.json" />
@@ -14,15 +14,17 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <link rel="stylesheet" href="css/styles.css" />
+  <!-- ?v= força novo CSS se o SW ainda tiver arquivo antigo em cache -->
+  <link rel="stylesheet" href="css/styles.css?v=concretrack-light-1" />
+  <meta name="color-scheme" content="light" />
 </head>
 <body>
   <header class="topbar">
     <div class="topbar-brand">
       <img src="assets/img/logo-concretrack.svg" width="40" height="40" alt="" />
       <div>
-        <div class="brand-name">CONCRETRACK<span> • Slump</span></div>
-        <div class="brand-sub">Campo / laboratório</div>
+        <div class="brand-name">Análise <span>Aditivos</span></div>
+        <div class="brand-sub">Desempenho de concreto</div>
       </div>
     </div>
     <div class="topbar-actions">
@@ -38,8 +40,8 @@
 
   <section class="hero">
     <div class="hero-icon" aria-hidden="true">▣</div>
-    <h1>Nova aplicação <span>Slump</span></h1>
-    <p>Registro de ensaios, gráficos e sincronização com planilha.</p>
+    <h1>Análise de <span>Aditivos</span></h1>
+    <p>Teste de desempenho, ensaios de slump e resistência com sincronização de dados.</p>
     <div class="accent-line" aria-hidden="true"></div>
   </section>
 
@@ -60,6 +62,17 @@
 
   <main class="main-content">
     <div id="view-dados" class="view-panel is-visible" role="tabpanel" aria-labelledby="tab-dados">
+      
+        <section class="section-card" aria-labelledby="sec-import">
+        <h2 class="section-title" id="sec-import"><span>▸</span> Importar dados</h2>
+        <p class="hint">Carregue dados salvos anteriormente.</p> 
+        <div class="sheet-actions">
+          <button type="button" id="btn-sheet-refresh-dados" class="btn btn--secondary">Atualizar lista</button>
+          <button type="button" id="btn-sheet-import-select" class="btn btn--accent hidden">Importar Dados</button>
+        </div>
+        <p id="sheet-status-dados" class="hint" style="margin-top: 12px; font-size: 0.85rem;"></p>
+      </section>   
+      
       <section class="section-card" aria-labelledby="sec-geral">
         <h2 class="section-title" id="sec-geral"><span>▸</span> Dados do ensaio</h2>
         <div class="grid-2">
@@ -89,6 +102,8 @@
           </label>
         </div>
       </section>
+
+
 
       <section class="section-card" aria-labelledby="sec-traco">
         <h2 class="section-title" id="sec-traco"><span>▸</span> Traço e volume</h2>
@@ -138,6 +153,76 @@
           <label class="field">
             <span>Dosagem aditivo 2 (%)</span>
             <input type="number" id="dosagemAditivo2" class="input-lg" step="0.01" placeholder="0" />
+          </label>
+          <label class="field">
+            <span>Água corrigida (L) (calc)</span>
+            <input type="text" id="aguaCorrigidaLitros" class="input-lg" readonly />
+          </label>
+          <label class="field">
+            <span>Volume total (L) (calc)</span>
+            <input type="text" id="volumeTotalLitros" class="input-lg" readonly />
+          </label>
+          <label class="field">
+            <span>Densidade teórica (kg/m³) (calc)</span>
+            <input type="text" id="densidadeTeorica" class="input-lg" readonly />
+          </label>
+          <label class="field">
+            <span>Argamassa (%) (calc)</span>
+            <input type="text" id="argamassaPct" class="input-lg" readonly />
+          </label>
+          <label class="field">
+            <span>H (%) (calc)</span>
+            <input type="text" id="hPct" class="input-lg" readonly />
+          </label>
+          <label class="field">
+            <span>Aditivo 1 (kg/m³) (calc)</span>
+            <input type="text" id="aditivo1KgM3" class="input-lg" readonly />
+          </label>
+        </div>
+      </section>
+
+      <section class="section-card" aria-labelledby="sec-traco-dados">
+        <h2 class="section-title" id="sec-traco-dados"><span>▸</span> Dados do Traço</h2>
+        <p class="hint">Dados calculados do traço e proporções dos materiais.</p>
+        <div class="grid-2">
+          <label class="field">
+            <span>Argamassa (%)</span>
+            <input type="text" id="dadoTracoArgamassa" class="input-lg" readonly />
+          </label>
+          <label class="field">
+            <span>H - Umidade (%)</span>
+            <input type="text" id="dadoTracoH" class="input-lg" readonly />
+          </label>
+          <label class="field">
+            <span>Densidade Teórica (kg/m³)</span>
+            <input type="text" id="dadoTracoDensidade" class="input-lg" readonly />
+          </label>
+          <label class="field">
+            <span>Ar teórico (%)</span>
+            <input type="text" id="dadoTracoAr" class="input-lg" readonly />
+          </label>
+          <label class="field">
+            <span>Volume total (L)</span>
+            <input type="text" id="dadoTracoVolume" class="input-lg" readonly />
+          </label>
+        </div>
+        <h3 class="section-subtitle">Proporções dos materiais</h3>
+        <div class="grid-2">
+          <label class="field">
+            <span>Brita 0 (%)</span>
+            <input type="text" id="dadoTracoBrita0" class="input-lg" readonly />
+          </label>
+          <label class="field">
+            <span>Brita 1 (%)</span>
+            <input type="text" id="dadoTracoBrita1" class="input-lg" readonly />
+          </label>
+          <label class="field">
+            <span>Areia Natural Fina (%)</span>
+            <input type="text" id="dadoTracoAreiaFina" class="input-lg" readonly />
+          </label>
+          <label class="field">
+            <span>Areia Natural Grossa (%)</span>
+            <input type="text" id="dadoTracoAreiaGrossa" class="input-lg" readonly />
           </label>
         </div>
       </section>
@@ -240,9 +325,15 @@
     </div>
   </main>
 
+
+
+  
   <footer class="app-footer">
     <span id="sync-status" class="sync-status">PWA — dados locais + nuvem.</span>
   </footer>
+
+
+
 
   <div id="modal-overlay" class="modal-overlay hidden" aria-hidden="true">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">

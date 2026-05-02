@@ -1,5 +1,7 @@
 /**
- * CONCRETRACK — tema claro industrial (layout enviado + componentes PWA)
+ * CONCRETRACK — layout CLARO solicitado (fundo claro, cinzas e azuis).
+ * Se ainda aparecer tema escuro: no Chrome, DevTools → Application →
+ * Service Workers → “Unregister”, ou janela anônima, ou Ctrl+Shift+R.
  */
 
 :root {
@@ -8,8 +10,13 @@
   --accent: #e8762a;
   --success: #1a7f4a;
   --danger: #c62828;
-  --card-bg: rgba(255, 255, 255, 0.85);
+  /* Igual ao snippet enviado: painéis levemente cinza sobre fundo claro */
+  --card-bg: rgba(0, 0, 0, 0.04);
   --card-border: rgba(0, 0, 0, 0.1);
+  --surface-strong: #ffffff;
+  --blue-gray-50: #f0f4f8;
+  --blue-gray-100: #e2e8f0;
+  --blue-gray-200: #cbd5e1;
   --text: #1a2840;
   --muted: #5a6a7e;
   --radius: 18px;
@@ -26,12 +33,20 @@
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: light;
+  background: linear-gradient(160deg, #f0f4f8 0%, #ffffff 60%, #eef2f7 100%);
+  min-height: 100%;
+}
+
 body {
   margin: 0;
   font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
   background: linear-gradient(160deg, #f0f4f8 0%, #ffffff 60%, #eef2f7 100%);
+  background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   padding-bottom: 60px;
@@ -46,8 +61,8 @@ body {
   gap: 12px;
   flex-wrap: wrap;
   padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.92);
-  border-bottom: 1px solid var(--card-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97) 0%, rgba(240, 244, 248, 0.95) 100%);
+  border-bottom: 1px solid rgba(26, 58, 92, 0.12);
   backdrop-filter: blur(10px);
   position: sticky;
   top: 0;
@@ -150,8 +165,9 @@ body {
 }
 
 .section-card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
+  /* Fundo branco + leve cinza (mesmo efeito visual do rgba(0,0,0,.04) sobre claro) */
+  background: linear-gradient(180deg, var(--surface-strong) 0%, var(--blue-gray-50) 100%);
+  border: 1px solid rgba(26, 58, 92, 0.12);
   border-radius: 16px;
   padding: 18px;
   margin-bottom: 14px;
@@ -163,10 +179,10 @@ body {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: var(--text);
+  color: var(--primary);
   margin: 0 0 14px;
   padding-bottom: 10px;
-  border-bottom: 1px solid var(--card-border);
+  border-bottom: 1px solid var(--blue-gray-200);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -175,6 +191,17 @@ body {
 .section-title span {
   font-size: 1rem;
   color: var(--accent);
+}
+
+.section-subtitle {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 14px 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--blue-gray-100);
 }
 
 .chart-label {
@@ -194,8 +221,8 @@ body {
   max-width: 800px;
   margin: 0 auto;
   width: 100%;
-  background: rgba(255, 255, 255, 0.75);
-  border-bottom: 1px solid var(--card-border);
+  background: linear-gradient(180deg, var(--blue-gray-100) 0%, var(--blue-gray-50) 100%);
+  border-bottom: 1px solid rgba(26, 58, 92, 0.15);
   position: sticky;
   top: 72px;
   z-index: 40;
@@ -213,8 +240,8 @@ body {
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid var(--card-border);
+  background: var(--surface-strong);
+  border: 1px solid rgba(26, 58, 92, 0.12);
   border-radius: var(--radius-sm);
   cursor: pointer;
   touch-action: manipulation;
@@ -306,7 +333,8 @@ body {
 }
 
 .input-lg:read-only {
-  background: #f5f7fa;
+  background: var(--blue-gray-50);
+  color: var(--muted);
 }
 
 .hint {
@@ -399,8 +427,8 @@ body {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  border: 1px solid var(--card-border);
-  background: #fff;
+  border: 1px solid rgba(26, 58, 92, 0.15);
+  background: var(--blue-gray-50);
   color: var(--muted);
 }
 
@@ -453,19 +481,20 @@ body {
 
 .data-table th,
 .data-table td {
-  border: 1px solid var(--card-border);
+  border: 1px solid rgba(26, 58, 92, 0.1);
   padding: 6px;
   vertical-align: middle;
 }
 
 .data-table th {
-  background: #f0f4f8;
+  background: linear-gradient(180deg, #dfe8f3 0%, #d0dce8 100%);
   color: var(--primary);
   font-weight: 800;
   white-space: nowrap;
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  border-color: rgba(26, 58, 92, 0.12);
 }
 
 .data-table input {
@@ -606,7 +635,8 @@ body {
   padding: 14px;
   font-size: 0.75rem;
   color: var(--muted);
-  border-top: 1px solid var(--card-border);
+  border-top: 1px solid rgba(26, 58, 92, 0.12);
+  background: rgba(255, 255, 255, 0.6);
   margin-top: auto;
 }
 
@@ -620,4 +650,288 @@ body {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ——— MOBILE & TABLET RESPONSIVIDADE ——— */
+
+@media (max-width: 480px) {
+  :root {
+    font-size: 14px;
+  }
+
+  body {
+    padding-bottom: 50px;
+  }
+
+  .topbar {
+    padding: 12px 16px;
+    gap: 8px;
+  }
+
+  .topbar-brand {
+    gap: 10px;
+  }
+
+  .topbar-brand img {
+    height: 32px;
+    width: 32px;
+  }
+
+  .brand-name {
+    font-size: 0.9rem;
+  }
+
+  .brand-name span {
+    font-size: 0.8rem;
+  }
+
+  .brand-sub {
+    font-size: 0.55rem;
+  }
+
+  .topbar-actions {
+    gap: 6px;
+  }
+
+  .hero {
+    padding: 24px 16px;
+  }
+
+  .hero-icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+  }
+
+  .hero h1 {
+    font-size: 1.4rem;
+  }
+
+  .hero p {
+    font-size: 0.85rem;
+  }
+
+  .segmented {
+    padding: 10px 12px;
+    gap: 6px;
+    top: 64px;
+  }
+
+  .segmented__btn {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .segmented__icon {
+    font-size: 0.9rem;
+  }
+
+  .segmented__btn span:nth-child(2) {
+    font-size: 0.75rem;
+  }
+
+  .main-content {
+    padding: 14px;
+  }
+
+  .section-card {
+    padding: 14px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+  }
+
+  .section-title {
+    font-size: 0.7rem;
+    margin: 0 0 10px;
+    padding-bottom: 8px;
+  }
+
+  .section-subtitle {
+    font-size: 0.65rem;
+    margin: 10px 0 8px;
+    padding-bottom: 6px;
+  }
+
+  .grid-2 {
+    gap: 10px;
+  }
+
+  .field span {
+    font-size: 0.75rem;
+  }
+
+  .input-lg,
+  .textarea {
+    min-height: 44px;
+    padding: 10px 10px;
+    font-size: 0.95rem;
+  }
+
+  .btn {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    min-height: 40px;
+  }
+
+  .btn-block {
+    width: 100%;
+  }
+
+  .data-table {
+    font-size: 0.75rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 4px;
+  }
+
+  .data-table th {
+    font-size: 0.6rem;
+  }
+
+  .data-table input {
+    min-height: 36px;
+    padding: 4px 6px;
+    font-size: 0.85rem;
+  }
+
+  .data-table .btn-icon {
+    min-height: 36px;
+    min-width: 36px;
+    font-size: 1rem;
+  }
+
+  .chart-box {
+    margin-bottom: 16px;
+  }
+
+  .chart-label {
+    font-size: 0.65rem;
+    margin: 0 0 6px;
+  }
+
+  .modal {
+    width: 95%;
+    max-width: 320px;
+    padding: 16px 14px;
+  }
+
+  .modal__message {
+    margin: 0 0 14px;
+    font-size: 0.9rem;
+  }
+
+  .pill {
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+
+  .hint {
+    font-size: 0.75rem;
+    margin: 8px 0;
+  }
+
+  /* Sheet actions (botões) */
+  .sheet-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sheet-actions .btn {
+    width: 100%;
+    padding: 10px 12px;
+  }
+
+  /* Tabelas em mobile — mais estreitas */
+  .table-wrap {
+    margin: 0 -14px;
+    border-radius: 0;
+  }
+
+  /* Histórico em mobile */
+  .history-list__item {
+    font-size: 0.75rem;
+    padding: 6px 8px;
+  }
+
+  .history-list__time {
+    font-size: 0.65rem;
+  }
+}
+
+@media (max-width: 768px) and (min-width: 481px) {
+  /* TABLET */
+  :root {
+    font-size: 15px;
+  }
+
+  .topbar {
+    padding: 14px 18px;
+  }
+
+  .hero {
+    padding: 28px 20px;
+  }
+
+  .main-content {
+    padding: 16px;
+  }
+
+  .section-card {
+    padding: 16px;
+  }
+
+  .grid-2 {
+    gap: 12px;
+  }
+
+  .data-table {
+    font-size: 0.8rem;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 5px;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* DESKTOP */
+  :root {
+    font-size: 16px;
+  }
+
+  .segmented {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  .main-content {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  .grid-2 {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .section-card {
+    padding: 22px;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 8px;
+  }
+
+  .data-table {
+    font-size: 0.85rem;
+  }
+
+  .chart-box {
+    margin-bottom: 28px;
+  }
 }
