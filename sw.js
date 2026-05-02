@@ -1,5 +1,5 @@
 /* Service Worker: shell offline + tentativa de cache das libs CDN na primeira instalação */
-const CACHE_NAME = 'slump-pwa-v1';
+const CACHE_NAME = 'slump-pwa-v2-industrial';
 const APP_SHELL = [
   './',
   './index.html',
