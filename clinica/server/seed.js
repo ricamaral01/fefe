@@ -28,15 +28,15 @@ async function seed({ demo = false } = {}) {
     `INSERT INTO usuarios (nome,email,senha_hash,perfil,crm,crm_uf,rqe,especialidade,cabecalho_endereco,cabecalho_telefone,cor)
      VALUES ($1,$2,$3,'medico',$4,'SP',$5,$6,'Av. Paulista, 1000 — sala 1204 — São Paulo/SP','(11) 3333-4444',$7) RETURNING id`,
     [nome, email, senha, crm, String(10000 + Number(crm.slice(-3))), esp, cor])).id;
-  const m1 = await med('Dra. Helena Duarte', 'helena@clinica.local', '123456', 'Clínica Médica', '#0f766e');
-  const m2 = await med('Dr. Rafael Moreira', 'rafael@clinica.local', '654321', 'Cardiologia', '#1d4ed8');
+  const m1 = await med('Dra. Maria Luísa Andrade', 'marialuisa@clinica.local', '123456', 'Clínica Médica', '#0f766e');
+  const m2 = await med('Dr. João Ricardo Ferraz', 'joaoricardo@clinica.local', '654321', 'Cardiologia', '#1d4ed8');
   await q(`INSERT INTO usuarios (nome,email,senha_hash,perfil) VALUES ('Juliana (Recepção)','recepcao@clinica.local',$1,'recepcao')`, [await hash('recepcao123')]);
   for (const m of [m1, m2])
     for (let d = 1; d <= 5; d++)
-      await q('INSERT INTO horarios_medico (medico_id,dia_semana,inicio,fim,duracao_min) VALUES ($1,$2,$3,$4,30),($1,$2,$5,$6,30)', [m, d, '08:00', '12:00', '14:00', '18:00']);
+      await q('INSERT INTO horarios_medico (medico_id,dia_semana,inicio,fim,duracao_min) VALUES ($1,$2,$3,$4,30),($1,$2,$5,$6,30)', [m, d, '07:00', '12:00', '13:00', '18:00']);
   // sábado de manhã para a demonstração funcionar em qualquer dia
   for (const m of [m1, m2])
-    for (const d of [0, 6]) await q('INSERT INTO horarios_medico (medico_id,dia_semana,inicio,fim,duracao_min) VALUES ($1,$2,$3,$4,30)', [m, d, '08:00', '12:00']);
+    for (const d of [0, 6]) await q('INSERT INTO horarios_medico (medico_id,dia_semana,inicio,fim,duracao_min) VALUES ($1,$2,$3,$4,30)', [m, d, '07:00', '12:00']);
 
   const pac = async (nome, cpf, nasc, sexo, tel, conv, cart, alerg) => (await one(
     `INSERT INTO pacientes (nome,cpf,data_nascimento,sexo,telefone,convenio,carteirinha,alergias) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
@@ -85,9 +85,14 @@ async function seed({ demo = false } = {}) {
   await ag(m1, p[3], hoje, '10:00', 'convenio', 'SulAmérica', 'retorno', 'confirmado');
   await ag(m1, p[4], hoje, '11:00', 'particular', null, 'primeira', 'agendado');
   await ag(m1, p[5], hoje, '14:30', 'convenio', 'Unimed', 'retorno', 'agendado');
+  await ag(m1, p[2], hoje, '07:00', 'particular', null, 'retorno', 'finalizado');
   await ag(m2, p[5], hoje, '09:00', 'convenio', 'Unimed', 'primeira', 'confirmado');
   await ag(m2, p[1], hoje, '15:00', 'particular', null, 'retorno', 'agendado');
-  console.log('Demo: helena@clinica.local / rafael@clinica.local (senha medico123), recepcao@clinica.local (recepcao123)');
+  await ag(m2, p[3], hoje, '07:30', 'convenio', 'SulAmérica', 'retorno', 'confirmado');
+  await ag(m2, p[4], hoje, '10:30', 'particular', null, 'primeira', 'agendado');
+  await ag(m2, p[0], hoje, '13:30', 'convenio', 'Unimed', 'primeira', 'aguardando');
+  await ag(m2, p[2], hoje, '16:00', 'convenio', 'Bradesco Saúde', 'primeira', 'agendado');
+  console.log('Demo: marialuisa@clinica.local / joaoricardo@clinica.local (senha medico123), recepcao@clinica.local (recepcao123)');
 }
 
 module.exports = { seed };

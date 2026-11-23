@@ -1,4 +1,4 @@
-// Recepção: escolhe o médico, vê os blocos de horário e agenda clicando no bloco
+// Recepção: agenda vertical do dia — uma coluna por médico, horários das 07h às 18h; clica no bloco para agendar
 import {
   html, api, session, $, $$, toast, modal, confirmar, formData, hojeISO, addDias, fmtData, fmtDataLonga, fmtDataHora,
   idade, icon, iniciais, badgeStatus, badgePagamento, badgeTipo, debounce, comLoading, WA_STATUS,
@@ -9,10 +9,8 @@ const CONVENIOS = ['Unimed', 'Bradesco Saúde', 'SulAmérica', 'Amil', 'NotreDam
 export default async function recepcao(el) {
   const medicos = await api('/medicos');
   const u = session.user;
-  let medicoId = Number(sessionStorage.getItem('rec-medico')) || (u.perfil === 'medico' ? u.id : medicos[0]?.id);
-  if (!medicos.some((m) => m.id === medicoId)) medicoId = medicos[0]?.id;
+  let medicoId = medicos[0]?.id; // médico do agendamento em edição
   let data = sessionStorage.getItem('rec-data') || hojeISO();
-  let blocos = [];
 
   if (!medicos.length) {
     el.innerHTML = html`<div class="empty">Nenhum médico cadastrado.${u.admin ? html` <a href="#/config">Cadastre em Configurações.</a>` : ''}</div>`.s;
@@ -30,45 +28,89 @@ export default async function recepcao(el) {
       </div>
       <button class="btn" data-encaixe>${icon('plus')} Encaixe</button>
     </div>
-    <div class="doctors" id="docs" role="tablist" aria-label="Médico"></div>
-    <div class="row wrap small muted" style="margin:14px 0 10px" id="resumo"></div>
-    <div class="slots" id="slots"></div>`.s;
+    <div class="row wrap small muted" style="margin:0 0 10px" id="resumo"></div>
+    <div class="agv-wrap" id="agv"></div>`.s;
 
   const medico = () => medicos.find((m) => m.id === medicoId);
+  const min = (h) => { const [a, b] = h.split(':').map(Number); return a * 60 + b; };
+  const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
-  function renderDocs() {
-    $('#docs', el).innerHTML = medicos.map((m) => html`<button class="doc-chip ${m.id === medicoId ? 'on' : ''}" data-med="${m.id}" role="tab" aria-selected="${m.id === medicoId}">
-      <span class="avatar" style="--av:${m.cor || '#0f766e'}">${iniciais(m.nome)}</span><span><b>${m.nome}</b><small>${m.especialidade || 'Médico(a)'}</small></span></button>`).join('');
+  function celulaAg(a, b, m) {
+    const wa = a.whatsapp_status === 'respondido' || a.status === 'confirmado'
+      ? html`<span class="badge green" title="Confirmado pelo paciente">${icon('whatsapp')}</span>`
+      : a.whatsapp_status === 'falhou' ? html`<span class="badge red" title="WhatsApp falhou">${icon('whatsapp')}</span>` : '';
+    return html`<button class="slot ocupado st-${a.status}" data-ag="${a.id}" style="--c:${m.cor || '#0f766e'}">
+      <span class="h">${a.hora}${b.encaixe ? html`<span class="badge amber">encaixe</span>` : ''}<span class="grow"></span>${wa}</span>
+      <span class="n">${a.paciente_nome}</span>
+      <span class="meta">${badgeStatus(a.status)}${badgeTipo(a)}${badgePagamento(a)}</span></button>`;
   }
 
   async function carregar() {
     if (!$('#dt', el)) return;
-    sessionStorage.setItem('rec-medico', medicoId);
     sessionStorage.setItem('rec-data', data);
     $('#dt', el).value = data;
     $('#sub', el).textContent = fmtDataLonga(data) + (data === hojeISO() ? ' · hoje' : '');
-    try { blocos = (await api(`/agenda?medico_id=${medicoId}&data=${data}`)).blocos; } catch (e) { return toast(e.message, 'erro'); }
-    const ocup = blocos.filter((b) => b.agendamento);
-    const n = (f) => ocup.filter((b) => f(b.agendamento)).length;
-    $('#resumo', el).innerHTML = html`<span><b>${ocup.length}</b> agendados</span>·<span><b>${blocos.length - ocup.length}</b> livres</span>·
-      <span><b>${n((a) => a.status === 'confirmado')}</b> confirmados</span>·<span><b>${n((a) => a.status === 'aguardando')}</b> na recepção</span>`.s;
+    let agendas;
+    try { agendas = await Promise.all(medicos.map((m) => api(`/agenda?medico_id=${m.id}&data=${data}`))); } catch (e) { return toast(e.message, 'erro'); }
+
+    // Linhas de horário: das 07:00 às 18:00 (ou mais, se a grade/encaixes passarem disso)
+    const todos = agendas.flatMap((g) => g.blocos);
+    const passo = Math.max(10, Math.min(30, ...todos.map((b) => b.duracao_min)));
+    let ini = min('07:00'), fim = min('18:00');
+    for (const b of todos) { ini = Math.min(ini, min(b.hora)); fim = Math.max(fim, min(b.hora) + b.duracao_min); }
+    ini -= ini % passo;
+    const tempos = new Set();
+    for (let t = ini; t < fim; t += passo) tempos.add(t);
+    todos.forEach((b) => tempos.add(min(b.hora)));
+    const linhas = [...tempos].sort((x, y) => x - y);
+    const idx = new Map(linhas.map((t, i) => [t, i]));
+
     const agora = new Date().toTimeString().slice(0, 5);
     const passado = (h) => data < hojeISO() || (data === hojeISO() && h < agora);
-    let periodo = null;
-    $('#slots', el).innerHTML = blocos.length
-      ? blocos.map((b) => {
-          const p = b.hora < '12:00' ? 'Manhã' : b.hora < '18:00' ? 'Tarde' : 'Noite';
-          const cab = p !== periodo ? ((periodo = p), html`<h3 class="periodo">${p}</h3>`) : '';
-          const a = b.agendamento;
-          if (!a) return html`${cab}<button class="slot livre ${passado(b.hora) ? 'passado' : ''}" data-hora="${b.hora}" aria-label="Agendar às ${b.hora}">
-            <span class="h">${b.hora}</span><span class="add">${icon('plus')} Agendar</span></button>`;
-          return html`${cab}<button class="slot ocupado st-${a.status}" data-ag="${a.id}" style="--c:${medico().cor}">
-            <span class="h">${b.hora}${b.encaixe ? html`<span class="badge amber">encaixe</span>` : ''}</span>
-            <span class="wa-dot" title="${WA_STATUS[a.whatsapp_status] || ''}">${a.whatsapp_status === 'respondido' || a.status === 'confirmado' ? html`<span class="badge green">${icon('whatsapp')}</span>` : a.whatsapp_status === 'falhou' ? html`<span class="badge red">${icon('whatsapp')}</span>` : ''}</span>
-            <span class="n">${a.paciente_nome}</span>
-            <span class="meta">${badgeStatus(a.status)}${badgeTipo(a)}${badgePagamento(a)}</span></button>`;
-        }).join('')
-      : html`<div class="empty" style="grid-column:1/-1">${medico().nome} não atende neste dia. Use <b>Encaixe</b> para agendar fora da grade.</div>`.s;
+    const cel = [];
+    let ocupados = 0, livres = 0, confirmados = 0, chegaram = 0;
+
+    // cabeçalho + coluna de horários
+    cel.push(html`<div class="agv-corner" style="grid-row:1;grid-column:1"></div>`);
+    linhas.forEach((t, i) => cel.push(html`<div class="agv-time ${t % 60 === 0 ? 'hr' : ''}" style="grid-row:${i + 2};grid-column:1">${hhmm(t)}</div>`));
+
+    medicos.forEach((m, ci) => {
+      const col = ci + 2;
+      const blocos = agendas[ci].blocos;
+      const ag = blocos.filter((b) => b.agendamento);
+      ocupados += ag.length;
+      livres += blocos.length - ag.length;
+      confirmados += ag.filter((b) => b.agendamento.status === 'confirmado').length;
+      chegaram += ag.filter((b) => b.agendamento.status === 'aguardando').length;
+      cel.push(html`<div class="agv-head" style="grid-row:1;grid-column:${col}">
+        <span class="avatar" style="--av:${m.cor || '#0f766e'}">${iniciais(m.nome)}</span>
+        <div class="grow" style="min-width:0"><b class="ellipsis" style="display:block">${m.nome}</b>
+        <small>${m.especialidade || 'Médico(a)'} · ${ag.length}/${blocos.length}</small></div></div>`);
+
+      const inicios = blocos.map((b) => min(b.hora)).sort((x, y) => x - y);
+      const coberto = new Set();
+      for (const b of blocos) {
+        const t0 = min(b.hora);
+        const prox = inicios.find((t) => t > t0) ?? Infinity;
+        const t1 = Math.min(t0 + b.duracao_min, prox);
+        let span = 0;
+        for (const t of linhas) if (t >= t0 && t < t1) { coberto.add(t); span++; }
+        const pos = `grid-row:${idx.get(t0) + 2} / span ${Math.max(1, span)};grid-column:${col}`;
+        cel.push(html`<div class="agv-cell" style="${pos}">${b.agendamento ? celulaAg(b.agendamento, b, m)
+          : html`<button class="slot livre ${passado(b.hora) ? 'passado' : ''}" data-hora="${b.hora}" data-medcol="${m.id}" aria-label="Agendar ${m.nome} às ${b.hora}">
+              <span class="add">${icon('plus')} ${b.hora} · Agendar</span></button>`}</div>`);
+      }
+      // horários fora da grade do médico: permitem encaixe
+      for (const t of linhas) if (!coberto.has(t))
+        cel.push(html`<div class="agv-cell" style="grid-row:${idx.get(t) + 2};grid-column:${col}"><button class="slot fora" data-encaixe-em="${hhmm(t)}" data-medcol="${m.id}"
+          aria-label="Encaixe ${m.nome} às ${hhmm(t)}"><span>Fora do horário</span><span class="add">${icon('plus')} Encaixe</span></button></div>`);
+    });
+
+    $('#resumo', el).innerHTML = html`<span><b>${ocupados}</b> agendados</span>·<span><b>${livres}</b> livres</span>·
+      <span><b>${confirmados}</b> confirmados</span>·<span><b>${chegaram}</b> na recepção</span>`.s;
+    const scroll = $('#agv', el).scrollTop;
+    $('#agv', el).innerHTML = html`<div class="agv" style="--cols:${medicos.length};grid-template-rows:auto repeat(${linhas.length}, minmax(var(--row), auto))">${cel}</div>`.s;
+    $('#agv', el).scrollTop = scroll;
   }
 
   // ------------------------------------------------ novo agendamento
@@ -77,7 +119,8 @@ export default async function recepcao(el) {
     const m = modal(html`<header><h2>Novo agendamento</h2><button class="btn ghost icon-only" data-close aria-label="Fechar">${icon('x')}</button></header>
       <form class="modal-body" id="agf" autocomplete="off" novalidate>
         <div class="info-box row wrap"><span class="avatar" style="--av:${medico().cor};width:28px;height:28px;font-size:11px">${iniciais(medico().nome)}</span>
-          <b>${medico().nome}</b><span class="muted">· ${fmtData(data)}</span>
+          ${encaixe ? html`<select name="medico_enc" style="width:auto;min-height:34px" aria-label="Médico">${medicos.map((x) => html`<option value="${x.id}" ${x.id === medicoId ? 'selected' : ''}>${x.nome}</option>`)}</select>` : html`<b>${medico().nome}</b>`}
+          <span class="muted">· ${fmtData(data)}</span>
           ${encaixe ? html`<input name="hora" type="time" required style="width:120px;min-height:34px" value="${hora || ''}" aria-label="Horário">` : html`<span class="muted">às</span> <b>${hora}</b>`}</div>
 
         <div class="pac-pick" id="pick">
@@ -161,7 +204,7 @@ export default async function recepcao(el) {
       const horaFinal = encaixe ? d.hora : hora;
       if (!horaFinal) throw new Error('Informe o horário');
       const body = {
-        medico_id: medicoId, data, hora: horaFinal, pagamento: d.pagamento, tipo: d.tipo, convenio: d.convenio, carteirinha: d.carteirinha,
+        medico_id: Number(d.medico_enc) || medicoId, data, hora: horaFinal, pagamento: d.pagamento, tipo: d.tipo, convenio: d.convenio, carteirinha: d.carteirinha,
         observacoes: d.observacoes, enviar_whatsapp: d.enviar_whatsapp,
       };
       if (paciente) {
@@ -272,14 +315,13 @@ export default async function recepcao(el) {
     if (!t) return;
     if (t.dataset.d) { data = addDias(data, Number(t.dataset.d)); carregar(); }
     else if (t.matches('[data-hoje]')) { data = hojeISO(); carregar(); }
-    else if (t.dataset.med) { medicoId = Number(t.dataset.med); renderDocs(); carregar(); }
-    else if (t.dataset.hora) novo(t.dataset.hora);
+    else if (t.dataset.hora) { medicoId = Number(t.dataset.medcol); novo(t.dataset.hora); }
+    else if (t.dataset.encaixeEm) { medicoId = Number(t.dataset.medcol); novo(t.dataset.encaixeEm, true); }
     else if (t.dataset.ag) detalhes(Number(t.dataset.ag)).catch((err) => toast(err.message, 'erro'));
-    else if (t.matches('[data-encaixe]')) novo('', true);
+    else if (t.matches('[data-encaixe]')) { medicoId = medicos[0].id; novo('', true); }
   });
   $('#dt', el).addEventListener('change', (e) => { if (e.target.value) { data = e.target.value; carregar(); } });
 
-  renderDocs();
   await carregar();
   const t = setInterval(() => !$('.modal-wrap') && carregar(), 30_000);
   return () => clearInterval(t);

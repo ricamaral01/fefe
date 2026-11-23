@@ -110,10 +110,10 @@ r.put('/usuarios/:id', soAdmin, async (req, res) => {
 });
 
 async function gradePadrao(medicoId) {
-  // Segunda a sexta, 08:00–12:00 e 14:00–18:00, blocos de 30 min (pode ser alterado na tela de configurações)
+  // Segunda a sexta, 07:00–12:00 e 13:00–18:00, blocos de 30 min (pode ser alterado na tela de configurações)
   for (let d = 1; d <= 5; d++) {
     await q('INSERT INTO horarios_medico (medico_id,dia_semana,inicio,fim,duracao_min) VALUES ($1,$2,$3,$4,30),($1,$2,$5,$6,30)',
-      [medicoId, d, '08:00', '12:00', '14:00', '18:00']);
+      [medicoId, d, '07:00', '12:00', '13:00', '18:00']);
   }
 }
 

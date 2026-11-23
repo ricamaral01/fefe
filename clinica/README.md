@@ -6,7 +6,7 @@ Sistema web instalável (PWA) para uma clínica: funciona em **MacBook, Windows,
 
 | Perfil | Tela inicial | Recursos |
 |---|---|---|
-| **Recepção** | Blocos de horário do médico selecionado | Clica no bloco → digita o paciente (busca ou cadastra) → **Convênio/Particular**, **1ª consulta/Retorno** → agenda e envia **confirmação por WhatsApp**. Marca chegada, falta, cancela, remarca, faz encaixe, reenvia WhatsApp. |
+| **Recepção** | Agenda vertical do dia: uma coluna por médico, horários das 07h às 18h | Clica no bloco livre do médico → digita o paciente (busca ou cadastra) → **Convênio/Particular**, **1ª consulta/Retorno** → agenda e envia **confirmação por WhatsApp**. Marca chegada, falta, cancela, remarca, faz encaixe (clicando num horário fora da grade ou no botão Encaixe), reenvia WhatsApp. |
 | **Médico** | **Agenda do dia** | Clica no agendamento → abre o **prontuário** com dados e **histórico** do paciente; descreve o problema, anamnese, exame, diagnóstico, conduta; **salva com data e hora** (salvamento automático); **receituário** (simples ou controle especial, A5/A4, autocompletar de medicamentos já usados, "repetir receita"); **atestado**; **imprimir prontuário**; **Encerrar consulta** → volta para a agenda. |
 | **Administrador** | — | Usuários (médicos com CRM/RQE/especialidade/endereço do cabeçalho), grade de horários de cada médico, dados da clínica. |
 
@@ -46,7 +46,7 @@ Acesse `https://SEU_DOMINIO` e entre com `ADMIN_EMAIL` / `ADMIN_SENHA`. Depois:
 
 1. **Configurações → Clínica**: nome, CNPJ, endereço, cidade/UF, telefone.
 2. **Configurações → Usuários**: cadastre os médicos (CRM, UF, RQE, especialidade) e a recepção.
-3. **Configurações → Horários**: ajuste a grade de cada médico (o padrão é seg–sex, 8h–12h e 14h–18h, blocos de 30 min).
+3. **Configurações → Horários**: ajuste a grade de cada médico (o padrão é seg–sex, 7h–12h e 13h–18h, blocos de 30 min).
 
 Os backups diários do banco ficam em `./backups` (últimos 30 dias). Recomenda-se copiá-los para fora da VPS.
 
@@ -79,7 +79,7 @@ npm install
 SEED_DEMO=true npm run dev        # http://localhost:3000
 ```
 
-Usuários de demonstração: `helena@clinica.local` e `rafael@clinica.local` (senha `medico123`), `recepcao@clinica.local` (`recepcao123`), `admin@clinica.local` (`trocar123`).
+Usuários de demonstração: `marialuisa@clinica.local` e `joaoricardo@clinica.local` (senha `medico123`), `recepcao@clinica.local` (`recepcao123`), `admin@clinica.local` (`trocar123`).
 
 - `scripts/reset-db.sh` apaga **todos os dados** e recria a demonstração. Use apenas em desenvolvimento.
 - `npm run mockups` percorre o fluxo completo no navegador (recepção → médico → receita → encerrar) e regenera as imagens em `docs/mockups`.

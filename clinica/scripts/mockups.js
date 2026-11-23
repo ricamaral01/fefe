@@ -46,11 +46,17 @@ const espera = (ms) => new Promise((r) => setTimeout(r, ms));
   for (const d of ['macbook', 'ipad', 'android']) {
     const { ctx, page } = await login(browser, d, 'recepcao@clinica.local', 'recepcao123');
     await page.goto(`${BASE}/#/recepcao`);
-    await page.waitForSelector('.slot');
+    await page.waitForSelector('.agv .slot');
     await shot(page, `02-recepcao-${d}`);
+    if (d === 'macbook') {
+      await page.$eval('#agv', (e) => { const t = [...e.querySelectorAll('.agv-time')].find((x) => x.textContent === '11:00'); e.scrollTop = t.offsetTop - 60; });
+      await page.hover('.slot.fora >> nth=0');
+      await shot(page, `02b-recepcao-tarde-${d}`);
+      await page.$eval('#agv', (e) => { e.scrollTop = 0; });
+    }
     if (d === 'macbook' || d === 'android') {
       // novo agendamento em um bloco livre
-      await page.click('.slot.livre >> nth=3');
+      await page.click('.agv .slot.livre:not(.passado) >> nth=0');
       await page.fill('#busca', 'Lucas Ferreira');
       await page.waitForSelector('#pick li[data-novo]');
       await page.dispatchEvent('#pick li[data-novo]', 'mousedown');
@@ -68,7 +74,7 @@ const espera = (ms) => new Promise((r) => setTimeout(r, ms));
         await shot(page, `04-whatsapp-${d}`);
         await page.click('text=Agora não');
         // detalhes de um agendamento existente
-        await page.click('.slot.ocupado >> nth=1');
+        await page.click('.agv .slot.ocupado.st-agendado >> nth=0');
         await page.waitForSelector('[data-st]');
         await shot(page, `05-detalhes-agendamento-${d}`);
         await page.click('[data-st=aguardando]');
@@ -82,7 +88,7 @@ const espera = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // ---------- médico: agenda
   for (const d of ['ipad', 'iphone', 'macbook']) {
-    const { ctx, page } = await login(browser, d, 'helena@clinica.local', 'medico123');
+    const { ctx, page } = await login(browser, d, 'marialuisa@clinica.local', 'medico123');
     await page.goto(`${BASE}/#/agenda`);
     await page.waitForSelector('.ag-item[data-id]');
     await shot(page, `06-agenda-medico-${d}`);
