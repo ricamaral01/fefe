@@ -477,3 +477,13 @@ textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
   .topbar .datenav input { flex: 1; min-width: 0; }
   .agv-cell > .slot .meta .badge.outline:not(.accent):not(.teal) { display: none; }
 }
+/* Papel A5: cabeçalho empilhado (nome do médico em cima, clínica embaixo) */
+.doc.a5 { font-size: 11pt; }
+.doc.a5 .dh { flex-direction: column; gap: 6px; padding-bottom: 8px; margin-bottom: 14px; }
+.doc.a5 .dh .dn { font-size: 15pt; }
+.doc.a5 .dh .dr { text-align: left; font-size: 8.5pt; }
+.doc.a5 .dh .dr br { display: none; }
+.doc.a5 .dh .dr b::after, .doc.a5 .dh .dr .end::after { content: " · "; font-weight: 400; }
+.doc.a5 .sig { font-size: 9pt; gap: 12px; }
+.doc.a5 .sig .line { min-width: 200px; }
+.doc.a5 .df { font-size: 7.5pt; }

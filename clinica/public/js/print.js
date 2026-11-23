@@ -12,7 +12,7 @@ function cabecalho(medico, clinica) {
     </div>
     <div class="dr">
       <b>${clinica?.nome || ''}</b><br>
-      ${medico.cabecalho_endereco || clinica?.endereco || ''}<br>
+      <span class="end">${medico.cabecalho_endereco || clinica?.endereco || ''}</span><br>
       ${medico.cabecalho_telefone || clinica?.telefone || ''}${clinica?.cnpj ? html` · CNPJ ${clinica.cnpj}` : ''}
     </div>
   </div>`;
@@ -93,8 +93,14 @@ export function docProntuario({ medico, clinica, atendimento }) {
     ${sec('Queixa / descrição do problema', atendimento.queixa)}${sec('Anamnese', atendimento.anamnese)}
     ${sec('Exame físico', atendimento.exame_fisico)}${sec('Hipótese diagnóstica / CID', atendimento.diagnostico)}
     ${sec('Conduta / prescrição', atendimento.conduta)}
-    ${atendimento.receitas?.length ? html`<div class="sec"><h4>Medicamentos prescritos</h4><p>${atendimento.receitas.flatMap((r) => r.itens).map((i) => `• ${i.medicamento} ${i.quantidade ? '(' + i.quantidade + ')' : ''} — ${i.posologia || ''}`).join('\n')}</p></div>` : ''}
+    ${atendimento.receitas?.length ? html`<div class="sec"><h4>Medicamentos prescritos</h4><p>${unicos(atendimento.receitas.flatMap((r) => r.itens)).map((i) => `• ${i.medicamento} ${i.quantidade ? '(' + i.quantidade + ')' : ''} — ${i.posologia || ''}`).join('\n')}</p></div>` : ''}
     ${rodape(medico, clinica)}</div>`;
+}
+
+// Mesma prescrição impressa mais de uma vez aparece uma só vez no prontuário
+function unicos(itens) {
+  const vistos = new Set();
+  return itens.filter((i) => { const k = `${i.medicamento}|${i.posologia}|${i.quantidade}`.toLowerCase(); return !vistos.has(k) && vistos.add(k); });
 }
 
 function extenso(n) {
@@ -109,7 +115,7 @@ function extenso(n) {
 export function imprimir(conteudo, { tamanho = 'A5', cor = '#0f766e' } = {}) {
   const [w, h] = TAMANHOS[tamanho] || TAMANHOS.A4;
   const area = document.getElementById('print-area');
-  area.innerHTML = `<style>@page{size:${w} ${h};margin:12mm}</style><div class="doc" style="--ph:${h};--dc:${esc(cor)}">${conteudo}</div>`;
+  area.innerHTML = `<style>@page{size:${w} ${h};margin:12mm}</style><div class="doc ${tamanho === 'A5' ? 'a5' : ''}" style="--ph:${h};--dc:${esc(cor)}">${conteudo}</div>`;
   setTimeout(() => window.print(), 50);
 }
 
