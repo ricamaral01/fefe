@@ -117,5 +117,61 @@
     "texto": "O atendimento abre com os dados do cadastro feito pela recepção e a observação \"Trazer exames de sangue recentes\". A partir daqui o médico descreve o caso, emite receita e encerra a consulta.",
     "quem": "Médico",
     "arquivo": "17-atendimento-aberto.png"
+  },
+  {
+    "n": 18,
+    "titulo": "Médico registra o atendimento",
+    "texto": "O médico descreve a queixa (o problema do paciente), anamnese, exame físico, diagnóstico e conduta (o que foi receitado). Ao clicar em Salvar — ou automaticamente a cada pausa na digitação — tudo fica gravado com data e hora do atendimento.",
+    "quem": "Médico",
+    "arquivo": "18-medico-registra-o-atendimento.png"
+  },
+  {
+    "n": 19,
+    "titulo": "Receituário",
+    "texto": "Em \"Receita\", o médico digita o medicamento, a quantidade e como tomar (com sugestões dos medicamentos que ele já receitou antes). Escolhe receita simples ou de controle especial e o papel A5 ou A4. Clica em \"Salvar e imprimir\".",
+    "quem": "Médico",
+    "arquivo": "19-receituario.png"
+  },
+  {
+    "n": 20,
+    "titulo": "Receita impressa com o cabeçalho do médico",
+    "texto": "A receita sai pronta para imprimir, já com o cabeçalho do médico logado (nome, especialidade, CRM, RQE, endereço e telefone), os medicamentos separados por via de uso, data e linha de assinatura. A receita fica salva no prontuário do paciente.",
+    "quem": "Médico",
+    "arquivo": "20-receita-impressa-com-o-cabecalho-do-medi.png"
+  },
+  {
+    "n": 21,
+    "titulo": "Receita registrada no prontuário",
+    "texto": "A receita aparece em \"Receitas desta consulta\" e pode ser reimpressa a qualquer momento. Nas próximas consultas ela aparece no histórico, com o botão \"Repetir receita\".",
+    "quem": "Médico",
+    "arquivo": "21-receita-registrada-no-prontuario.png"
+  },
+  {
+    "n": 22,
+    "titulo": "Prontuário impresso",
+    "texto": "O botão \"Prontuário\" imprime o registro completo do atendimento, também com o cabeçalho do médico: dados do paciente, data e hora, convênio, queixa, anamnese, exame, diagnóstico, conduta e medicamentos prescritos.",
+    "quem": "Médico",
+    "arquivo": "22-prontuario-impresso.png"
+  },
+  {
+    "n": 23,
+    "titulo": "Encerrar consulta",
+    "texto": "Ao terminar, o médico clica em \"Encerrar consulta\". O sistema pede confirmação, salva tudo e registra o horário de encerramento.",
+    "quem": "Médico",
+    "arquivo": "23-encerrar-consulta.png"
+  },
+  {
+    "n": 24,
+    "titulo": "De volta à agenda do dia",
+    "texto": "O médico volta automaticamente para a agenda do dia. O Lucas aparece como \"Atendido\" e o contador de atendidos sobe. É só clicar no próximo paciente.",
+    "quem": "Médico",
+    "arquivo": "24-de-volta-a-agenda-do-dia.png"
+  },
+  {
+    "n": 25,
+    "titulo": "Recepção vê a consulta finalizada",
+    "texto": "Na agenda da recepção o bloco do Lucas passa para \"Atendido\". Se for preciso marcar o retorno em 30 dias, basta ir até a data e clicar num horário livre — o sistema já sugere \"Retorno\" para quem já consultou.",
+    "quem": "Recepção",
+    "arquivo": "25-recepcao-ve-a-consulta-finalizada.png"
   }
 ]

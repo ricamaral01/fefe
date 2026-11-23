@@ -22,6 +22,7 @@ async function login(email, senha) {
 }
 async function contexto(browser, opts, email, senha) {
   const ctx = await browser.newContext(opts);
+  await ctx.addInitScript(() => { window.print = () => {}; });
   if (email) {
     const { token, user } = await login(email, senha);
     await ctx.addInitScript(([t, u]) => { localStorage.setItem('token', t); localStorage.setItem('user', u); }, [token, JSON.stringify(user)]);
@@ -58,6 +59,30 @@ async function foto(page, titulo, texto, quem = 'Recepção') {
   await limpa(page);
   if (quem === 'Paciente') await molduraIphone(page, arq);
   passos.push({ n, titulo, texto, quem, arq });
+}
+
+// Salva o documento que está na área de impressão como PDF (tamanho real)
+async function docPdf(page, arq) {
+  await page.emulateMedia({ media: 'print' });
+  await page.pdf({ path: arq, preferCSSPageSize: true, printBackground: true });
+  await page.emulateMedia({ media: 'screen' });
+}
+
+// Imagem do documento impresso (folha branca) para o passo a passo
+async function docImagem(browser, page, tamanho, titulo, texto) {
+  const conteudo = await page.$eval('#print-area', (e) => e.innerHTML);
+  const [w, h] = tamanho === 'A5' ? [559, 794] : [794, 1123];
+  const p = await browser.newPage({ viewport: { width: w + 80, height: h + 80 }, deviceScaleFactor: 2 });
+  await p.goto(`${BASE}/healthz`);
+  await p.setContent(`<link rel="stylesheet" href="${BASE}/css/app.css"><style>html,body{background:#d9e0e6!important;margin:0}
+    #print-area{display:block!important;width:${w}px;height:${h}px;margin:40px;background:#fff;box-shadow:0 8px 30px rgba(0,0,0,.25);padding:45px;box-sizing:border-box;overflow:hidden}
+    .doc .page{min-height:${h - 90}px}</style><div id="print-area">${conteudo.replace(/<style>@page[^<]*<\/style>/, '')}</div>`);
+  await p.waitForTimeout(300);
+  n++;
+  const arq = path.join(OUT, `${String(n).padStart(2, '0')}-${titulo.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)}.png`);
+  await p.screenshot({ path: arq });
+  await p.close();
+  passos.push({ n, titulo, texto, quem: 'Médico', arq });
 }
 
 // Coloca a captura do celular dentro de uma moldura de iPhone
@@ -212,11 +237,83 @@ function htmlConversa(msgs, contato) {
   await med.waitForSelector('#pront');
   await marca(med, '.info-box', 'Observação da recepção');
   await foto(med, 'Atendimento aberto', 'O atendimento abre com os dados do cadastro feito pela recepção e a observação "Trazer exames de sangue recentes". A partir daqui o médico descreve o caso, emite receita e encerra a consulta.', 'Médico');
+
+  // ---- Atendimento: preenchimento do prontuário
+  await med.fill('[name=queixa]', 'Palpitações e cansaço aos esforços há 3 semanas. Nega dor no peito ou desmaio. Trouxe exames de sangue.');
+  await med.fill('[name=anamnese]', 'Sedentário, trabalha sentado. Ex-tabagista (parou há 2 anos). Pai com infarto aos 58 anos. Exames (10/11): colesterol total 248, LDL 168, HDL 39, TG 205, glicemia 102, TSH 2,1.');
+  await med.fill('[name=exame_fisico]', 'BEG. PA 142/92 mmHg · FC 84 bpm rítmico · Peso 88 kg · IMC 29,1. ACV: RCR 2T, BNF, sem sopros. ECG: ritmo sinusal, sem alterações.');
+  await med.fill('[name=diagnostico]', 'Hipertensão arterial estágio 1 (I10) · Dislipidemia (E78.5)');
+  await med.fill('[name=conduta]', 'Iniciada losartana 50 mg/dia e rosuvastatina 10 mg/dia. Dieta hipossódica, perda de peso, caminhada 30 min 5x/semana. Solicitado ecocardiograma e Holter 24h. Retorno em 30 dias com exames.');
+  await med.fill('[name=alergias]', 'Nenhuma conhecida');
+  await med.click('#pront button[type=submit]');
+  await med.waitForSelector('text=Salvo às');
+  await med.evaluate(() => { window.scrollTo(0, 0); document.querySelectorAll('.toast').forEach((t) => t.remove()); });
+  await marca(med, '#pront .form-sec');
+  await foto(med, 'Médico registra o atendimento', 'O médico descreve a queixa (o problema do paciente), anamnese, exame físico, diagnóstico e conduta (o que foi receitado). Ao clicar em Salvar — ou automaticamente a cada pausa na digitação — tudo fica gravado com data e hora do atendimento.', 'Médico');
+
+  // ---- Receita
+  await med.click('.at-head [data-receita]');
+  await med.waitForSelector('#itens .med-row');
+  const lin = (i) => `#itens .med-row >> nth=${i}`;
+  await med.fill(`${lin(0)} >> [data-k=medicamento]`, 'Losartana potássica 50 mg');
+  await med.fill(`${lin(0)} >> [data-k=quantidade]`, '30 comprimidos');
+  await med.fill(`${lin(0)} >> [data-k=posologia]`, 'Tomar 1 comprimido pela manhã, uso contínuo.');
+  await med.click('[data-add]');
+  await med.fill(`${lin(1)} >> [data-k=medicamento]`, 'Rosuvastatina cálcica 10 mg');
+  await med.fill(`${lin(1)} >> [data-k=quantidade]`, '30 comprimidos');
+  await med.fill(`${lin(1)} >> [data-k=posologia]`, 'Tomar 1 comprimido à noite, uso contínuo.');
+  await med.fill('#rxf [name=observacoes]', 'Retorno em 30 dias com ecocardiograma e Holter.');
+  await marca(med, '[data-ok]', 'Salvar e imprimir');
+  await foto(med, 'Receituário', 'Em "Receita", o médico digita o medicamento, a quantidade e como tomar (com sugestões dos medicamentos que ele já receitou antes). Escolhe receita simples ou de controle especial e o papel A5 ou A4. Clica em "Salvar e imprimir".', 'Médico');
+
+  await med.click('[data-ok]');
+  await med.waitForFunction(() => /Receituário/i.test(document.querySelector('#print-area .ttl')?.textContent || ''));
+  const pdfReceita = path.join(OUT, 'anexo-receita.pdf');
+  await docPdf(med, pdfReceita);
+  await docImagem(browser, med, 'A5', 'Receita impressa com o cabeçalho do médico', 'A receita sai pronta para imprimir, já com o cabeçalho do médico logado (nome, especialidade, CRM, RQE, endereço e telefone), os medicamentos separados por via de uso, data e linha de assinatura. A receita fica salva no prontuário do paciente.');
+  await med.waitForSelector('.rx-row');
+  await med.evaluate(() => document.querySelectorAll('.toast').forEach((t) => t.remove()));
+  await med.$eval('.rx-list', (e) => e.scrollIntoView({ block: 'center' }));
+  await marca(med, '.rx-list', 'Receita salva');
+  await foto(med, 'Receita registrada no prontuário', 'A receita aparece em "Receitas desta consulta" e pode ser reimpressa a qualquer momento. Nas próximas consultas ela aparece no histórico, com o botão "Repetir receita".', 'Médico');
+
+  // ---- Prontuário impresso
+  await med.evaluate(() => window.scrollTo(0, 0));
+  await med.evaluate(() => { document.getElementById('print-area').innerHTML = ''; });
+  await med.click('.at-head [data-pront]');
+  await med.waitForFunction(() => /Registro de atendimento/i.test(document.querySelector('#print-area .ttl')?.textContent || ''));
+  const pdfPront = path.join(OUT, 'anexo-prontuario.pdf');
+  await docPdf(med, pdfPront);
+  await docImagem(browser, med, 'A4', 'Prontuário impresso', 'O botão "Prontuário" imprime o registro completo do atendimento, também com o cabeçalho do médico: dados do paciente, data e hora, convênio, queixa, anamnese, exame, diagnóstico, conduta e medicamentos prescritos.');
+
+  // ---- Encerrar consulta
+  await med.click('.at-head [data-encerrar]');
+  await med.waitForSelector('.modal [data-ok]');
+  await marca(med, '.modal [data-ok]', '4. Encerrar consulta');
+  await foto(med, 'Encerrar consulta', 'Ao terminar, o médico clica em "Encerrar consulta". O sistema pede confirmação, salva tudo e registra o horário de encerramento.', 'Médico');
+  await med.click('.modal [data-ok]');
+  await med.waitForSelector('.ag-item[data-id]:has-text("Lucas Ferreira")');
+  await med.waitForTimeout(400);
+  await med.evaluate(() => document.querySelectorAll('.toast').forEach((t) => t.remove()));
+  await marca(med, '.ag-item[data-id]:has-text("Lucas Ferreira")', 'Atendido');
+  await foto(med, 'De volta à agenda do dia', 'O médico volta automaticamente para a agenda do dia. O Lucas aparece como "Atendido" e o contador de atendidos sobe. É só clicar no próximo paciente.', 'Médico');
   await cm.close();
+
+  // ---- Recepção vê a consulta finalizada
+  const { ctx: cr2, page: rec2 } = await contexto(browser, MAC, 'recepcao@clinica.local', 'recepcao123');
+  await rec2.goto(`${BASE}/#/recepcao`);
+  await rec2.waitForSelector('.agv .slot');
+  await rec2.click('[data-d="1"]');
+  await rec2.waitForSelector('.agv .slot.ocupado:has-text("Lucas Ferreira") .badge.green');
+  await marca(rec2, '.agv .slot.ocupado:has-text("Lucas Ferreira")', 'Consulta finalizada');
+  await foto(rec2, 'Recepção vê a consulta finalizada', 'Na agenda da recepção o bloco do Lucas passa para "Atendido". Se for preciso marcar o retorno em 30 dias, basta ir até a data e clicar num horário livre — o sistema já sugere "Retorno" para quem já consultou.');
+  await cr2.close();
 
   // ================= PDF
   const pdf = await browser.newPage();
   const cor = { 'Recepção': '#0f766e', Paciente: '#1f9d55', 'Médico': '#1d4ed8' };
+  const faixa = (de, ate) => `${de}–${ate}`;
+  const idx = (t) => passos.find((s) => s.titulo === t).n;
   await pdf.setContent(`<!doctype html><meta charset="utf-8"><style>
     @page{size:297mm 210mm;margin:0} body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#14212b}
     .p{width:297mm;height:210mm;page-break-after:always;display:grid;grid-template-columns:78mm 1fr;gap:8mm;padding:12mm;box-sizing:border-box;background:#f3f6f8}
@@ -230,15 +327,23 @@ function htmlConversa(msgs, contato) {
     .capa{display:flex;flex-direction:column;justify-content:center;padding:24mm}
     .capa h1{font-size:34pt;margin:0 0 6mm} .capa ol{font-size:13pt;line-height:1.8;color:#36434d}
   </style>
-  <div class="p capa" style="display:flex"><h1>Fluxo do agendamento</h1>
-    <p style="font-size:14pt;max-width:220mm">Sequência completa de telas — da recepção ao celular do paciente e à tela do médico — no sistema da Clínica Vida &amp; Saúde.</p>
-    <ol><li><b style="color:#0f766e">Recepção</b> agenda o paciente (passos 1–8)</li><li><b style="color:#1f9d55">Paciente</b> recebe a mensagem e confirma (passos 9–12)</li>
-    <li><b style="color:#0f766e">Recepção</b> vê a confirmação e registra a chegada (passos 13–15)</li><li><b style="color:#1d4ed8">Médico</b> atende (passos 16–17)</li></ol></div>
+  <div class="p capa" style="display:flex"><h1>Do agendamento ao fim da consulta</h1>
+    <p style="font-size:14pt;max-width:230mm">Sequência completa de telas do sistema da Clínica Vida &amp; Saúde — recepção, celular do paciente e médico — com a receita e o prontuário gerados nesta consulta anexados ao final.</p>
+    <ol><li><b style="color:#0f766e">Recepção</b> agenda o paciente (passos ${faixa(1, idx('Agenda atualizada'))})</li>
+    <li><b style="color:#1f9d55">Paciente</b> recebe a mensagem no WhatsApp e confirma (passos ${faixa(idx('Mensagem no celular do paciente'), idx('Presença confirmada'))})</li>
+    <li><b style="color:#0f766e">Recepção</b> vê a confirmação e registra a chegada (passos ${faixa(idx('Recepção vê a confirmação'), idx('Paciente na recepção'))})</li>
+    <li><b style="color:#1d4ed8">Médico</b> atende, receita, imprime e encerra (passos ${faixa(idx('Agenda do médico'), idx('De volta à agenda do dia'))})</li>
+    <li><b style="color:#0f766e">Recepção</b> vê a consulta finalizada (passo ${idx('Recepção vê a consulta finalizada')})</li>
+    <li><b>Anexos:</b> receita e prontuário em PDF, exatamente como saem na impressora</li></ol></div>
   ${passos.map((s) => `<div class="p"><div class="txt"><div class="n">${s.n}</div><span class="q" style="background:${cor[s.quem]}">${s.quem}</span><h2>${s.titulo}</h2><p>${s.texto}</p></div>
-    <div class="img"><img src="data:image/png;base64,${fs.readFileSync(s.arq).toString('base64')}"></div></div>`).join('')}`);
-  await pdf.pdf({ path: path.join(OUT, 'fluxo-agendamento.pdf'), preferCSSPageSize: true, printBackground: true });
+    <div class="img"><img src="data:image/png;base64,${fs.readFileSync(s.arq).toString('base64')}"></div></div>`).join('')}
+  <div class="p capa" style="display:flex"><h1>Anexos</h1><p style="font-size:14pt;max-width:230mm">Nas próximas páginas: a <b>receita</b> (papel A5) e o <b>prontuário</b> (papel A4) do atendimento acima, no tamanho real de impressão, gerados pelo próprio sistema.</p></div>`);
+  const roteiro = path.join(OUT, 'roteiro.pdf');
+  await pdf.pdf({ path: roteiro, preferCSSPageSize: true, printBackground: true });
   await browser.close();
   await db.end();
+  require('child_process').execFileSync('pdfunite', [roteiro, pdfReceita, pdfPront, path.join(OUT, 'fluxo-completo-consulta.pdf')]);
+  fs.rmSync(roteiro);
   fs.writeFileSync(path.join(OUT, 'passos.json'), JSON.stringify(passos.map(({ arq, ...s }) => ({ ...s, arquivo: path.basename(arq) })), null, 2));
   console.log(passos.map((s) => `${s.n}. [${s.quem}] ${s.titulo}`).join('\n'));
 })().catch(async (e) => { console.error(e); process.exit(1); });
