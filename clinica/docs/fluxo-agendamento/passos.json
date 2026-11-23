@@ -1,0 +1,121 @@
+[
+  {
+    "n": 1,
+    "titulo": "Agenda da recepção",
+    "texto": "A recepcionista abre a agenda do dia (aqui, amanhã). Cada médico tem sua coluna, com os horários das 07h às 18h. Ela clica no bloco livre do médico desejado — Dr. João Ricardo, 09:30.",
+    "quem": "Recepção",
+    "arquivo": "01-agenda-da-recepcao.png"
+  },
+  {
+    "n": 2,
+    "titulo": "Janela de novo agendamento",
+    "texto": "Abre a janela de agendamento já com médico, data e horário preenchidos. O cursor fica no campo de paciente.",
+    "quem": "Recepção",
+    "arquivo": "02-janela-de-novo-agendamento.png"
+  },
+  {
+    "n": 3,
+    "titulo": "Busca do paciente",
+    "texto": "Ao digitar, o sistema busca no cadastro por nome, CPF ou telefone. Se o paciente já existe, basta clicar no nome (o histórico e o convênio vêm junto). Como é a primeira vez do Lucas, a recepcionista clica em \"Cadastrar novo paciente\".",
+    "quem": "Recepção",
+    "arquivo": "03-busca-do-paciente.png"
+  },
+  {
+    "n": 4,
+    "titulo": "Cadastro rápido do paciente",
+    "texto": "Preenche nome, WhatsApp (obrigatório, é para onde vai a confirmação), nascimento, CPF e sexo. O cadastro é criado junto com o agendamento.",
+    "quem": "Recepção",
+    "arquivo": "04-cadastro-rapido-do-paciente.png"
+  },
+  {
+    "n": 5,
+    "titulo": "Convênio, particular, primeira consulta ou retorno",
+    "texto": "Escolhe Particular ou Convênio (com nome do convênio e carteirinha) e 1ª consulta ou Retorno. Pode deixar uma observação para o médico. A opção \"Enviar confirmação por WhatsApp\" já vem marcada.",
+    "quem": "Recepção",
+    "arquivo": "05-convenio-particular-primeira-consulta-ou.png"
+  },
+  {
+    "n": 6,
+    "titulo": "Confirmar o agendamento",
+    "texto": "Clica em Agendar.",
+    "quem": "Recepção",
+    "arquivo": "06-confirmar-o-agendamento.png"
+  },
+  {
+    "n": 7,
+    "titulo": "Envio da confirmação por WhatsApp",
+    "texto": "O agendamento é gravado e a mensagem de confirmação é montada automaticamente. Com a integração ligada (API oficial da Meta ou Evolution API), ela é enviada sozinha e aparece só um aviso \"Confirmação enviada por WhatsApp ✔\". Sem integração (modo manual, mostrado aqui), a recepção toca em \"Abrir WhatsApp\" e a mensagem já sai pronta para o número do paciente.",
+    "quem": "Recepção",
+    "arquivo": "07-envio-da-confirmacao-por-whatsapp.png"
+  },
+  {
+    "n": 8,
+    "titulo": "Agenda atualizada",
+    "texto": "O bloco das 09:30 do Dr. João Ricardo já aparece ocupado com Lucas Ferreira — status \"Agendado\", 1ª consulta, Unimed — aguardando a confirmação do paciente.",
+    "quem": "Recepção",
+    "arquivo": "08-agenda-atualizada.png"
+  },
+  {
+    "n": 9,
+    "titulo": "Mensagem no celular do paciente",
+    "texto": "O Lucas recebe no WhatsApp a mensagem com médico, dia, horário e endereço. Ele pode responder 1 (confirmar) ou 2 (cancelar), ou tocar no link. (Este é exatamente o texto gerado pelo sistema; com a integração automática ele chega pelo número da clínica.)",
+    "quem": "Paciente",
+    "arquivo": "09-mensagem-no-celular-do-paciente.png"
+  },
+  {
+    "n": 10,
+    "titulo": "Opção A: paciente responde 1",
+    "texto": "Opção A — o paciente simplesmente responde \"1\". Com a integração ligada, o sistema lê a resposta e marca a consulta como Confirmada automaticamente (\"2\" cancela e libera o horário).",
+    "quem": "Paciente",
+    "arquivo": "10-opcao-a-paciente-responde-1.png"
+  },
+  {
+    "n": 11,
+    "titulo": "Opção B: página de confirmação",
+    "texto": "Opção B — tocando no link, abre uma página da clínica com os dados da consulta e os botões Confirmar e Cancelar. Funciona mesmo no modo manual, sem integração.",
+    "quem": "Paciente",
+    "arquivo": "11-opcao-b-pagina-de-confirmacao.png"
+  },
+  {
+    "n": 12,
+    "titulo": "Presença confirmada",
+    "texto": "Ao confirmar, o paciente vê a mensagem de agradecimento e o status \"Confirmada ✔\". No dia anterior à consulta o sistema ainda envia um lembrete automático (com integração ligada).",
+    "quem": "Paciente",
+    "arquivo": "12-presenca-confirmada.png"
+  },
+  {
+    "n": 13,
+    "titulo": "Recepção vê a confirmação",
+    "texto": "Sem ninguém fazer nada, a agenda da recepção (que se atualiza sozinha a cada 30 s) passa a mostrar \"Confirmado\" e o ícone verde de WhatsApp no bloco do Lucas.",
+    "quem": "Recepção",
+    "arquivo": "13-recepcao-ve-a-confirmacao.png"
+  },
+  {
+    "n": 14,
+    "titulo": "Paciente chega à clínica",
+    "texto": "No dia, quando o Lucas chega, a recepcionista clica no bloco dele. A janela mostra os dados, o histórico do WhatsApp (data/hora da confirmação) e as ações: Paciente chegou, Faltou, Cancelar, Remarcar, Reenviar WhatsApp. Ela clica em \"Paciente chegou\".",
+    "quem": "Recepção",
+    "arquivo": "14-paciente-chega-a-clinica.png"
+  },
+  {
+    "n": 15,
+    "titulo": "Paciente na recepção",
+    "texto": "O bloco muda para \"Na recepção\" (amarelo). Essa informação vai direto para a tela do médico.",
+    "quem": "Recepção",
+    "arquivo": "15-paciente-na-recepcao.png"
+  },
+  {
+    "n": 16,
+    "titulo": "Agenda do médico",
+    "texto": "Na tela do Dr. João Ricardo, o Lucas aparece destacado como \"Na recepção\", com 1ª consulta, Unimed e idade. Ao clicar, abre o atendimento já com o prontuário do paciente.",
+    "quem": "Médico",
+    "arquivo": "16-agenda-do-medico.png"
+  },
+  {
+    "n": 17,
+    "titulo": "Atendimento aberto",
+    "texto": "O atendimento abre com os dados do cadastro feito pela recepção e a observação \"Trazer exames de sangue recentes\". A partir daqui o médico descreve o caso, emite receita e encerra a consulta.",
+    "quem": "Médico",
+    "arquivo": "17-atendimento-aberto.png"
+  }
+]

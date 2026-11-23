@@ -15,7 +15,8 @@ async function buscar(token) {
 }
 
 function pagina(a, msg) {
-  const data = a ? new Date(a.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : '';
+  const d = a ? new Date(a.data + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }) : '';
+  const data = d.charAt(0).toUpperCase() + d.slice(1);
   const aberto = a && ['agendado', 'confirmado'].includes(a.status);
   const rotulo = { agendado: 'Aguardando confirmação', confirmado: 'Confirmada ✔', cancelado: 'Cancelada', finalizado: 'Realizada',
     aguardando: 'Paciente na recepção', em_atendimento: 'Em atendimento', faltou: 'Não compareceu' };
@@ -26,7 +27,7 @@ function pagina(a, msg) {
 @media (prefers-color-scheme:dark){:root{--bg:#0d1419;--card:#16212a;--tx:#e6edf2;--mut:#93a4b1;--bd:#263541}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:grid;place-items:center;min-height:100vh;padding:16px}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:24px;max-width:420px;width:100%}
-h1{font-size:20px;margin:0 0 4px}.mut{color:var(--mut);font-size:14px}.big{font-size:18px;font-weight:600;margin:16px 0 4px;text-transform:capitalize}
+h1{font-size:20px;margin:0 0 4px}.mut{color:var(--mut);font-size:14px}.big{font-size:18px;font-weight:600;margin:16px 0 4px}
 .st{display:inline-block;margin-top:12px;padding:4px 10px;border-radius:99px;background:color-mix(in srgb,var(--pri) 14%,transparent);color:var(--pri);font-weight:600;font-size:14px}
 form{display:flex;gap:10px;margin-top:20px}button{flex:1;padding:14px;border-radius:12px;border:0;font:inherit;font-weight:600;cursor:pointer}
 .ok{background:var(--pri);color:#fff}.no{background:transparent;color:var(--red);border:1px solid var(--red)}.msg{margin-top:16px;font-weight:600}
@@ -37,8 +38,8 @@ ${a ? `<h1>${esc(a.clinica)}</h1><div class="mut">${esc(a.endereco || '')}</div>
 <div>${esc(a.medico)}${a.especialidade ? ' — ' + esc(a.especialidade) : ''}</div>
 <span class="st">${esc(rotulo[a.status] || a.status)}</span>
 ${msg ? `<div class="msg">${esc(msg)}</div>` : ''}
-${aberto ? `<form method="post"><button class="ok" name="acao" value="confirmar">Confirmar</button>
-<button class="no" name="acao" value="cancelar" onclick="return confirm('Deseja realmente cancelar a consulta?')">Cancelar</button></form>` : ''}
+${aberto ? `<form method="post">${a.status === 'agendado' ? '<button class="ok" name="acao" value="confirmar">Confirmar</button>' : ''}
+<button class="no" name="acao" value="cancelar" onclick="return confirm('Deseja realmente cancelar a consulta?')">${a.status === 'confirmado' ? 'Não poderei ir — cancelar' : 'Cancelar'}</button></form>` : ''}
 ${a.telefone ? `<p class="mut">Dúvidas ou remarcação: ${esc(a.telefone)}</p>` : ''}`
     : '<h1>Link inválido</h1><p class="mut">Este link de confirmação não existe ou expirou.</p>'}
 </main></body></html>`;
